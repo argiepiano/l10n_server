@@ -900,17 +900,19 @@ function l10n_community_translate_form_submit($form, &$form_state) {
     foreach ($string as $tid => $options) {
 
       // Store new suggestion.
+      $all_values = 0;
       $empty_values = 0;
       // $options['value'] is the result of (a series of) textareas.
       if (isset($options['value']) && is_array($options['value'])) {
         foreach ($options['value'] as $key => $value) {
+          $all_values++;
           if ($value === t('<New translation>')) {
             $options['value'] = '';
             $empty_values++;
           }
         }
         // If we had value in any of the textareas, add new suggestion.
-        if ($tid === 'new' && count($options['value']) > $empty_values) {
+        if ($tid === 'new' && $all_values > $empty_values) {
           $tid = l10n_community_add_suggestion($sid, l10n_community_pack_string($options['value']), $langcode, $user->uid, $user->uid, L10N_SERVER_MEDIUM_WEB);
           if ($tid) {
             if ($string['active'] === 'new') {
@@ -986,14 +988,14 @@ function l10n_community_translate_form_submit($form, &$form_state) {
  *     Source string ID.
  *   - 'author' (object)
  *     User object for author to look up. Will both return suggestions and
- *     translations authored by the user. 
+ *     translations authored by the user.
  * @param int $pager
  *   Number of strings to be returned in a pager.
  * @param array $sids
  *   An array of sids to load, else the sids will be taken from pager.
  *
- * @return array 
- *   An array of is_active = 1 string record objects from the database 
+ * @return array
+ *   An array of is_active = 1 string record objects from the database
  *   matching the filters provided.
  */
 function l10n_community_get_strings($langcode, $filters, $pager, $sids = array()) {
@@ -1038,7 +1040,7 @@ function l10n_community_get_strings($langcode, $filters, $pager, $sids = array()
     elseif ($project) {
       $query->condition('l.pid', $project->pid);
     }
-    // The line table has a 1:N relationship to sources. We need to limit 
+    // The line table has a 1:N relationship to sources. We need to limit
     // results to unique sids. A group by on sid with ordering by null appears
     // to be the fastest solution (as opposed to eg. DISTINCT).
     $query->groupBy('sid');
