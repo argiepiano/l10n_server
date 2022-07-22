@@ -603,6 +603,16 @@ function l10n_drupal_save_string($value = NULL, $context = NULL, $file = NULL, $
     $files[$file] = l10n_drupal_save_file(NULL, $file);
   }
 
+  // The database uses a TEXT field for storage which has a maximum length of
+  // 65,535 characters (bytes), so we need to make sure to refuse long strings.
+  // It is not realistic to ever get close to this length for human translation.
+  // strlen() counts bytes, so it is safe to use even with UTF characters here.
+  // See https://dev.mysql.com/doc/refman/5.6/en/string-type-syntax.html
+  if (strlen($value) > 65000) {
+    potx_status('error', t('Translatable source strings should be shorter than 64k characters.'), $file, $line);
+    return;
+  }
+
   // Value set but empty. Mark error on empty translatable string. Only trim
   // for empty string checking, since we should store leading/trailing
   // whitespace as it appears in the string otherwise.
