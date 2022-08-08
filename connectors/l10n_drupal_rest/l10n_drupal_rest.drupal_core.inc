@@ -13,8 +13,18 @@ function l10n_drupal_rest_drupal_core_status() {
   $releases = db_query('SELECT sr.rid, sr.title FROM {l10n_server_release} sr WHERE sr.pid = :pid', [
     ':pid' => $project_id,
   ])->fetchAllKeyed();
-  uksort($releases, 'version_compare');
+
+  // Filter out alpha and beta versions. Keep RC versions.
+  foreach ($releases as $rid => $title) {
+    if (stripos($title, 'alpha') || stripos($title, 'beta')) {
+      unset($releases[$rid]);
+    }
+  }
+  // Order by titles using version comparison.
+  uasort($releases, 'version_compare');
+  // Take the release id of the highest version number. May be an RC.
   $rid = array_reverse(array_keys($releases))[0];
+
   list($num_source, $string_counts) = l10n_community_get_l10n_packager_string_count($project_id, $rid);
 
   $output = '<p>' . t('Status based on @num source strings found in Drupal @release. Links are to untranslated strings in the release for that group.', [
