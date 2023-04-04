@@ -3,19 +3,19 @@
 /**
  * Initialize potx to run on l10n_server.
  */
-function _l10n_drupal_potx_init() {
+function _l10n_backdrop_potx_init() {
   global $_potx_module_metadata;
   global $potx_callbacks;
 
   $_potx_module_metadata = array();
 
   $potx_callbacks = array(
-    'schema_store_lookup' => '_l10n_drupal_schema_store_lookup',
-    'schema_reverse_lookup' => '_l10n_drupal_schema_reverse_lookup',
-    'load_module_metadata' => '_l10n_drupal_load_module_metadata',
-    'store_module_metadata' => '_l10n_drupal_store_module_metadata',
-    'schema_store' => '_l10n_drupal_schema_store',
-    'schema_load' => '_l10n_drupal_schema_load',
+    'schema_store_lookup' => '_l10n_backdrop_schema_store_lookup',
+    'schema_reverse_lookup' => '_l10n_backdrop_schema_reverse_lookup',
+    'load_module_metadata' => '_l10n_backdrop_load_module_metadata',
+    'store_module_metadata' => '_l10n_backdrop_store_module_metadata',
+    'schema_store' => '_l10n_backdrop_schema_store',
+    'schema_load' => '_l10n_backdrop_schema_load',
   );
 }
 
@@ -29,12 +29,12 @@ function _l10n_drupal_potx_init() {
  * @param string $module_name
  *   Name of the module containing the schema.
  */
-function _l10n_drupal_schema_store_lookup($keys, $module_name) {
+function _l10n_backdrop_schema_store_lookup($keys, $module_name) {
   if (!is_array($keys)) {
     return;
   }
 
-  $result = db_query("SELECT * FROM {l10n_drupal_schema_reverse_lookup} WHERE schema_key IN (:keys) AND module_name = :module_name",
+  $result = db_query("SELECT * FROM {l10n_backdrop_schema_reverse_lookup} WHERE schema_key IN (:keys) AND module_name = :module_name",
       array(':keys' => $keys, ':module_name' => $module_name));
 
   // Exclude existing records
@@ -46,7 +46,7 @@ function _l10n_drupal_schema_store_lookup($keys, $module_name) {
     return;
   }
 
-  $query = db_insert('l10n_drupal_schema_reverse_lookup')->fields(array('schema_key', 'module_name'));
+  $query = db_insert('l10n_backdrop_schema_reverse_lookup')->fields(array('schema_key', 'module_name'));
   foreach ($keys as $key) {
     $query->values(array(
       'schema_key' => $key,
@@ -70,9 +70,9 @@ function _l10n_drupal_schema_store_lookup($keys, $module_name) {
  *
  * @see _potx_find_matching_schema()
  */
-function _l10n_drupal_schema_reverse_lookup($matching_candidates) {
+function _l10n_backdrop_schema_reverse_lookup($matching_candidates) {
   // Search for modules that contain any schema definitions that could possibly match with this config file.
-  $result = db_query("SELECT * FROM {l10n_drupal_schema_reverse_lookup} WHERE schema_key IN (:matching_candidates)", array(':matching_candidates' => $matching_candidates));
+  $result = db_query("SELECT * FROM {l10n_backdrop_schema_reverse_lookup} WHERE schema_key IN (:matching_candidates)", array(':matching_candidates' => $matching_candidates));
 
   $mapped = array();
   foreach ($result as $record) {
@@ -98,12 +98,12 @@ function _l10n_drupal_schema_reverse_lookup($matching_candidates) {
  * @return bool
  *   TRUE if the module was found, FALSE otherwise.
  */
-function _l10n_drupal_load_module_metadata($module_name) {
+function _l10n_backdrop_load_module_metadata($module_name) {
   global $_potx_module_metadata;
 
   $_potx_module_metadata[$module_name]['dependencies'] = array();
 
-  $record = db_query("SELECT * FROM {l10n_drupal_parsed_module_data} WHERE module_name = :module_name", array(':module_name' => $module_name))->fetchObject();
+  $record = db_query("SELECT * FROM {l10n_backdrop_parsed_module_data} WHERE module_name = :module_name", array(':module_name' => $module_name))->fetchObject();
 
   if ($record === FALSE) {
     // Module metadata not found.
@@ -126,9 +126,9 @@ function _l10n_drupal_load_module_metadata($module_name) {
  * @param array $metadata
  *   The module's metadata
  */
-function _l10n_drupal_store_module_metadata($module_name, $metadata) {
+function _l10n_backdrop_store_module_metadata($module_name, $metadata) {
   $dependencies = isset($metadata['dependencies']) ? $metadata['dependencies'] : array();
-  db_merge('l10n_drupal_parsed_module_data')
+  db_merge('l10n_backdrop_parsed_module_data')
     ->key(array('module_name' => $module_name))
     ->fields(array('dependencies' => serialize($dependencies)))
     ->execute();
@@ -142,10 +142,10 @@ function _l10n_drupal_store_module_metadata($module_name, $metadata) {
  * @param string $module_name
  *   The module name.
  */
-function _l10n_drupal_schema_store($module_name) {
+function _l10n_backdrop_schema_store($module_name) {
   global $_potx_module_schema;
 
-  db_merge('l10n_drupal_parsed_module_data')
+  db_merge('l10n_backdrop_parsed_module_data')
     ->key(array('module_name' => $module_name))
     ->fields(array('parsed_schema' => serialize($_potx_module_schema)))
     ->execute();
@@ -157,8 +157,8 @@ function _l10n_drupal_schema_store($module_name) {
  * @param string $module_name
  *   The module's name.
  */
-function _l10n_drupal_schema_load($module_name) {
-  $record = db_query("SELECT * FROM {l10n_drupal_parsed_module_data} WHERE module_name = :module_name", array(':module_name' => $module_name))->fetchObject();
+function _l10n_backdrop_schema_load($module_name) {
+  $record = db_query("SELECT * FROM {l10n_backdrop_parsed_module_data} WHERE module_name = :module_name", array(':module_name' => $module_name))->fetchObject();
 
   if ($record === FALSE) {
     // Module metadata not found.

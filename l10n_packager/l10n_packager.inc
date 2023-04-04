@@ -31,7 +31,7 @@ module_load_include('inc', 'l10n_community', 'export');
  *   In a cron run, a release may be packaged partially, for some languages.
  */
 function l10n_packager_release_check($release, $force = FALSE, $limit = 0, $language = NULL, $cron = FALSE) {
-  $check_languages = isset($language) ? array($language->language => $language) : l10n_community_get_languages();
+  $check_languages = isset($language) ? array($language->langcode => $language) : l10n_community_get_languages();
   $updated = array();
   // We get update time before creating files so the release checked time
   // is <= file timestamp.
@@ -60,7 +60,7 @@ function l10n_packager_release_check($release, $force = FALSE, $limit = 0, $lang
 
   // Repackage this relase for the remaining language list.
   while ((!$limit || $limit > count($updated)) && ($language = array_shift($languages))) {
-    $langcode = $language->language;
+    $langcode = $language->langcode;
     // Warning: this may upload release data with or without file.
     $existing = !empty($files[$langcode]) ? $files[$langcode] : NULL;
     $updated[$langcode] = l10n_packager_release_package($release, $language, $existing, $timestamp);
@@ -77,12 +77,12 @@ function l10n_packager_release_check($release, $force = FALSE, $limit = 0, $lang
 
   if (isset($release->status)) {
     // Just update status of existing record.
-    drupal_write_record('l10n_packager_release', $release, 'rid');
+    backdrop_write_record('l10n_packager_release', $release, 'rid');
   }
   else {
     // The first time we checked this release, we need to add a new record.
     $release->status = L10N_PACKAGER_ACTIVE;
-    drupal_write_record('l10n_packager_release', $release);
+    backdrop_write_record('l10n_packager_release', $release);
   }
   return $updated;
 }
@@ -113,7 +113,7 @@ function l10n_packager_release_package($release, $language, $file = NULL, $times
   if (!$file) {
     $file = new stdClass();
     $file->rid = $release->rid;
-    $file->language = $language->language;
+    $file->language = $language->langcode;
   }
 
   // Generate PO file. Always export in compact form.
@@ -141,14 +141,14 @@ function l10n_packager_release_package($release, $language, $file = NULL, $times
     $file->filemime = $mime_type;
     $file->uri = $file_path;
     file_unmanaged_move($export_name, $file->uri, FILE_EXISTS_REPLACE);
-    $file->filesize = filesize(drupal_realpath($file->uri));
+    $file->filesize = filesize(backdrop_realpath($file->uri));
     $file->sid_count = $sid_count;
     // Create actual symlink to latest
     l10n_packager_create_latest_symlink($file_path, $release, $language);
 
     // Create / update file record and link to release.
-    drupal_write_record('file_managed', $file, !empty($file->fid) ? 'fid' : array());
-    drupal_write_record('l10n_packager_file', $file, !empty($file->drid) ? 'drid' : array());
+    backdrop_write_record('file_managed', $file, !empty($file->fid) ? 'fid' : array());
+    backdrop_write_record('l10n_packager_file', $file, !empty($file->drid) ? 'drid' : array());
     module_invoke_all('l10n_packager_done', $file);
     return $file;
 
@@ -196,7 +196,7 @@ function _l10n_packager_build_batch($operations = array(), $title = '') {
     'title' => $title ? $title : t('Translations packager.'),
     'operations' => $operations,
     // Tell the batch engine which file to load before calling operations.
-    'file' => drupal_get_path('module', 'l10n_packager') . '/l10n_packager.inc',
+    'file' => backdrop_get_path('module', 'l10n_packager') . '/l10n_packager.inc',
   );
   return $batch;
 }
@@ -215,7 +215,7 @@ function _l10n_packager_batch_repackage($rid, $langcode) {
     $language = $languages[$langcode];
     $updates = l10n_packager_release_check($release, TRUE, 0, $language);
     if ($file = current($updates)) {
-      drupal_set_message(t("Repackaged release %release for %language. Created file %filename.", array('%release' => l10n_packager_release_name($release), '%filename' => $file->filename, '%language' => t($language->name))));
+      backdrop_set_message(t("Repackaged release %release for %language. Created file %filename.", array('%release' => l10n_packager_release_name($release), '%filename' => $file->filename, '%language' => t($language->name))));
     }
   }
 }
@@ -245,7 +245,7 @@ function l10n_packager_create_latest_symlink($file, $release, $language) {
   $abbreviated_release = clone $release;
   $abbreviated_release->branch = preg_replace('/\.[0-9]+\.x$/', '.x', $abbreviated_release->branch);
 
-  $target = drupal_realpath($file);
+  $target = backdrop_realpath($file);
   $latest_file = dirname($target) . '/' . l10n_packager_get_filepath($abbreviated_release, $language, '%project-%branch.%language.po');
 
   if (file_exists($latest_file)) {
@@ -321,8 +321,8 @@ function l10n_packager_release_set_branch(&$release) {
   // 8.7.x. 6.x-1.0-beta1 becomes 6.x-1.x. 2.1.0-rc1 becomes 2.1.x.
   $release->branch = preg_replace('#\.[^.]*$#', '.x', $release->title);
 
-  // Stupid hack for drupal core.
-  if ($release->uri === 'drupal') {
+  // Stupid hack for backdrop core.
+  if ($release->uri === 'backdrop') {
     // Version has -extra removed, 6.0-beta1 becomes 6.0.
     $release->version = explode('-', $release->title)[0];
     // Major version is the first component before the .

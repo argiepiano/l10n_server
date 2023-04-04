@@ -1,5 +1,4 @@
 <?php
-
 /**
  * @file
  *   Administrative functions for localization server projects.
@@ -17,10 +16,10 @@ define('L10N_SERVER_ADMIN_PROJECTS_PER_PAGE', 30);
  */
 function l10n_server_admin_projects() {
   if (!$projects = l10n_server_get_projects(array('pager' => L10N_SERVER_ADMIN_PROJECTS_PER_PAGE, 'all' => TRUE))) {
-    drupal_set_message(t('No projects found.'), 'error');
+    backdrop_set_message(t('No projects found.'), 'error');
     return '';
   }
-  return drupal_get_form('l10n_server_admin_projects_form', $projects);
+  return backdrop_get_form('l10n_server_admin_projects_form', $projects);
 }
 
 /**
@@ -79,7 +78,7 @@ function l10n_server_admin_projects_form($form, &$form_state, $projects) {
  */
 function theme_l10n_server_admin_projects_form($variables) {
   $form = $variables['form'];
-  $output = ($pager = drupal_render($form['pager']));
+  $output = ($pager = backdrop_render($form['pager']));
   $table = array();
   foreach ($form['projects'] as $pid => &$project_element) {
     if (!is_int($pid)) {
@@ -87,12 +86,12 @@ function theme_l10n_server_admin_projects_form($variables) {
       continue;
     }
     $table[] = array(
-      drupal_render($project_element['status']),
-      drupal_render($project_element['title']),
-      drupal_render($project_element['edit']),
-      drupal_render($project_element['releases']),
-      drupal_render($project_element['reset']),
-      drupal_render($project_element['delete']),
+      backdrop_render($project_element['status']),
+      backdrop_render($project_element['title']),
+      backdrop_render($project_element['edit']),
+      backdrop_render($project_element['releases']),
+      backdrop_render($project_element['reset']),
+      backdrop_render($project_element['delete']),
     );
   }
   $headers = array(t('Enabled'), t('Project'), array(
@@ -101,10 +100,10 @@ function theme_l10n_server_admin_projects_form($variables) {
              ));
   $output .= theme('table', array('header' => $headers, 'rows' => $table));
   $output .= $pager;
-  $output .= drupal_render_children($form);
+  $output .= backdrop_render_children($form);
 
   if ($form['orphans']['#value']) {
-    drupal_set_message(format_plural($form['orphans']['#value'], 'There is @count source string orphaned.', 'There are @count source strings orphaned.') . ' ' . t('Deleting projects will not be available until you <a href="@cleanup">clean up the database</a> or rescan projects (within connectors you use) if you have started over with some of them.', array('@cleanup' => url('admin/l10n_server/projects/cleanup'))));
+    backdrop_set_message(format_plural($form['orphans']['#value'], 'There is @count source string orphaned.', 'There are @count source strings orphaned.') . ' ' . t('Deleting projects will not be available until you <a href="@cleanup">clean up the database</a> or rescan projects (within connectors you use) if you have started over with some of them.', array('@cleanup' => url('admin/l10n_server/projects/cleanup'))));
   }
   return $output;
 }
@@ -122,7 +121,7 @@ function l10n_server_admin_projects_form_submit($form, &$form_state) {
       ->condition('pid', $pid)
       ->execute();
   }
-  drupal_set_message(t('Localization server project changes saved.'));
+  backdrop_set_message(t('Localization server project changes saved.'));
 }
 
 // = Delete a project from the database ========================================
@@ -146,7 +145,7 @@ function l10n_server_admin_projects_delete($form, &$form_state, $project_uri) {
  */
 function l10n_server_admin_projects_delete_submit($form, &$form_state) {
   l10n_server_delete_project($form_state['values']['project']->pid);
-  drupal_set_message(t('The %project was deleted from the Localization server.', array('%project' => $form_state['values']['project']->title)));
+  backdrop_set_message(t('The %project was deleted from the Localization server.', array('%project' => $form_state['values']['project']->title)));
   $form_state['redirect'] = 'admin/l10n_server/projects';
 }
 
@@ -171,7 +170,7 @@ function l10n_server_admin_projects_reset($form, &$form_state, $project_uri) {
  */
 function l10n_server_admin_projects_reset_submit($form, &$form_state) {
   l10n_server_delete_project($form_state['values']['project']->pid, TRUE);
-  drupal_set_message(t('Project data for %project was deleted from the Localization server. Make sure to parse releases for this project again before deleting a project or cleaning up the database, or you will loose existing translation data.', array('%project' => $form_state['values']['project']->title)));
+  backdrop_set_message(t('Project data for %project was deleted from the Localization server. Make sure to parse releases for this project again before deleting a project or cleaning up the database, or you will lose existing translation data.', array('%project' => $form_state['values']['project']->title)));
   $form_state['redirect'] = 'admin/l10n_server/projects';
 }
 
@@ -182,12 +181,12 @@ function l10n_server_admin_projects_reset_submit($form, &$form_state) {
  */
 function l10n_server_admin_releases($project_uri) {
   $project = l10n_server_get_projects(array('uri' => $project_uri));
-  drupal_set_title(t('Releases of project @project', array('@project' => $project->title)), PASS_THROUGH);
+  backdrop_set_title(t('Releases of project @project', array('@project' => $project->title)), PASS_THROUGH);
   if (!$project_releases = l10n_server_get_releases($project_uri, FALSE)) {
-    drupal_set_message(t('No releases found for this project.'), 'error');
+    backdrop_set_message(t('No releases found for this project.'), 'error');
     return '';
   }
-  return drupal_get_form('l10n_server_admin_releases_form', $project, $project_releases);
+  return backdrop_get_form('l10n_server_admin_releases_form', $project, $project_releases);
 }
 
 /**
@@ -216,7 +215,7 @@ function l10n_server_admin_releases_form($form, &$form_state, $project, $release
         '#markup' => (!empty($release->file_date) ? format_date($release->file_date) : t('n/a')),
       ),
       'is_parsed' => array(
-        '#markup' => (!empty($release->last_parsed) ? theme('image', array('path' => 'misc/watchdog-ok.png', 'width' => t('parsed'), 'height' => t('parsed'))) : ''),
+        '#markup' => (!empty($release->last_parsed) ? theme('image', array('path' => 'core/misc/watchdog-ok.png', 'width' => t('parsed'), 'height' => t('parsed'))) : ''),
       ),
       'last_parsed' => array(
         '#markup' => (!empty($release->last_parsed) ? format_date($release->last_parsed) : t('n/a')),
@@ -252,12 +251,12 @@ function theme_l10n_server_admin_releases_form($variables) {
       continue;
     }
     $row = array(
-      drupal_render($release_element['is_parsed']),
-      drupal_render($release_element['title']),
-      drupal_render($release_element['download_link']),
-      drupal_render($release_element['file_date']),
-      drupal_render($release_element['last_parsed']),
-      drupal_render($release_element['weight']),
+      backdrop_render($release_element['is_parsed']),
+      backdrop_render($release_element['title']),
+      backdrop_render($release_element['download_link']),
+      backdrop_render($release_element['file_date']),
+      backdrop_render($release_element['last_parsed']),
+      backdrop_render($release_element['weight']),
     );
     $max_operations = max($max_operations, count($release_element['operations']));
     foreach ($release_element['operations']['#markup'] as $operation) {
@@ -275,7 +274,7 @@ function theme_l10n_server_admin_releases_form($variables) {
                'colspan' => $max_operations,
              ));
   $output .= theme('table', array('header' => $headers, 'rows' => $table));
-  $output .= drupal_render_children($form);
+  $output .= backdrop_render_children($form);
   return $output;
 }
 
@@ -287,9 +286,9 @@ function theme_l10n_server_admin_releases_form($variables) {
  */
 function l10n_server_admin_projects_cleanup() {
   if ($orphans = l10n_server_orphan_strings()) {
-    return drupal_get_form('l10n_server_admin_projects_cleanup_form', $orphans);
+    return backdrop_get_form('l10n_server_admin_projects_cleanup_form', $orphans);
   }
-  drupal_set_message(t('You have no orphan source strings in your database to clean up.'));
+  backdrop_set_message(t('You have no orphan source strings in your database to clean up.'));
   return array();
 }
 
@@ -305,7 +304,7 @@ function l10n_server_admin_projects_cleanup_form($form, &$form_state, $orphans) 
  */
 function l10n_server_admin_projects_cleanup_form_submit($form, &$form_state) {
   l10n_server_delete_orphans();
-  drupal_set_message(t('Orphan strings and their translations were removed.'));
+  backdrop_set_message(t('Orphan strings and their translations were removed.'));
   $form_state['redirect'] = 'admin/l10n_server/projects';
 }
 
@@ -415,8 +414,8 @@ function l10n_server_admin_projects_edit_form_submit($form, &$form_state) {
   }
   $new_project->weight = (int) $new_project->weight;
 
-  drupal_write_record('l10n_server_project', $new_project, !empty($new_project->pid) ? 'pid' : array());
-  drupal_set_message(t('Project data saved.'));
+  backdrop_write_record('l10n_server_project', $new_project, !empty($new_project->pid) ? 'pid' : array());
+  backdrop_set_message(t('Project data saved.'));
   $form_state['redirect'] = 'admin/l10n_server/projects';
 }
 
@@ -508,8 +507,8 @@ function l10n_server_admin_projects_release_edit_form_submit($form, &$form_state
   }
   $new_release->weight = (int) $new_release->weight;
 
-  drupal_write_record('l10n_server_release', $new_release, !empty($new_release->rid) ? 'rid' : array());
-  drupal_set_message(t('Release data saved.'));
+  backdrop_write_record('l10n_server_release', $new_release, !empty($new_release->rid) ? 'rid' : array());
+  backdrop_set_message(t('Release data saved.'));
 
   // Save the new release for any successive form handlers
   // (such as an uploads source handler).
@@ -545,7 +544,7 @@ function l10n_server_admin_projects_release_delete($form, &$form_state, $project
  */
 function l10n_server_admin_projects_release_delete_submit($form, &$form_state) {
   l10n_server_delete_release($form_state['values']['release']->rid);
-  drupal_set_message(t('%project %release was deleted from the Localization server.', array('%project' => $form_state['values']['project']->title, '%release' => $form_state['values']['release']->title)));
+  backdrop_set_message(t('%project %release was deleted from the Localization server.', array('%project' => $form_state['values']['project']->title, '%release' => $form_state['values']['release']->title)));
   $form_state['redirect'] = 'admin/l10n_server/projects/releases/' . $form_state['values']['project']->uri;
 }
 
@@ -576,7 +575,7 @@ function l10n_server_admin_projects_release_reset($form, &$form_state, $project_
  */
 function l10n_server_admin_projects_release_reset_submit($form, &$form_state) {
   l10n_server_delete_release($form_state['values']['release']->rid, TRUE);
-  drupal_set_message(t('Release data for %project %release was deleted from the Localization server. Make sure to parse this release data again before deleting a project or cleaning up the database, or you will loose existing translation data.', array('%project' => $form_state['values']['project']->title, '%release' => $form_state['values']['release']->title)));
+  backdrop_set_message(t('Release data for %project %release was deleted from the Localization server. Make sure to parse this release data again before deleting a project or cleaning up the database, or you will lose existing translation data.', array('%project' => $form_state['values']['project']->title, '%release' => $form_state['values']['release']->title)));
   $form_state['redirect'] = 'admin/l10n_server/projects/releases/' . $form_state['values']['project']->uri;
 }
 

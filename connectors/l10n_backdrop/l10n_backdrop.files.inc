@@ -9,13 +9,13 @@
  *   TRUE if the execution was automated, so user feedback should
  *   not be provided. FALSE otherwise.
  */
-function l10n_drupal_files_scan($source = NULL, $automated = FALSE) {
+function l10n_backdrop_files_scan($source = NULL, $automated = FALSE) {
 
   // We look for projects in the working directory.
-  $workdir = variable_get('l10n_server_connector_l10n_drupal_files_directory', '');
+  $workdir = config_get('l10n_server.settings', 'l10n_server_connector_l10n_backdrop_files_directory');
 
   if (!is_dir($workdir)) {
-    drupal_set_message(t('The configured directory (%workdir) cannot be found. <a href="@configure">Check your configuration</a>.', array('%workdir' => $workdir, '@configure' => url('admin/l10n_server/connectors/config/l10n_drupal/files'))));
+    backdrop_set_message(t('The configured directory (%workdir) cannot be found. <a href="@configure">Check your configuration</a>.', array('%workdir' => $workdir, '@configure' => url('admin/l10n_server/connectors/config/l10n_backdrop/files'))));
   }
   else {
     // Packages are always .tar.gz files.
@@ -23,44 +23,46 @@ function l10n_drupal_files_scan($source = NULL, $automated = FALSE) {
     if (count($files)) {
       foreach ($files as $path => $file) {
 
-        if (!l10n_drupal_is_supported_version($path)) {
+        if (!l10n_backdrop_is_supported_version($path)) {
           // Skip files for unsupported versions.
           continue;
         }
 
         // Get rid of $workdir prefix on file names, eg.
-        // files/Drupal/drupal-4.6.7.tar.gz or
+        // files/Backdrop/backdrop-4.6.7.tar.gz or
         // files/Ubercart/ubercart-5.x-1.0-alpha8.tar.gz.
         $path = $package = trim(preg_replace('!(^' . preg_quote($workdir, '!') . ')(.+)\.tar\.gz!', '\2', $path), '/');
 
         $project_title = '';
         if (strpos($path, '/')) {
           // We have a slash, so this package is in a subfolder.
-          // Eg. Drupal/drupal-4.6.7 or Ubercart/ubercart-5.x-1.0-alpha8.
+          // Eg. Backdrop/backdrop-4.6.7 or Ubercart/ubercart-5.x-1.0-alpha8.
           // Grab the directory name as project title.
           list($project_title, $package) = explode('/', $path);
         }
         if (strpos($package, '-')) {
           // Only remaining are the project uri and release,
-          // eg. drupal-4.6.7 or ubercart-5.x-1.0-alpha8.
+          // eg. backdrop-4.6.7 or ubercart-5.x-1.0-alpha8.
           list($project_uri, $release_version) = explode('-', $package, 2);
 
-          l10n_drupal_save_data($project_uri, ($project_title ? $project_title : $project_uri), $release_version, $path . '.tar.gz', filemtime($file->uri));
+          l10n_backdrop_save_data($project_uri, ($project_title ? $project_title : $project_uri), $release_version, $path . '.tar.gz', filemtime($file->uri));
         }
         else {
           // File name not formatted properly.
-          $result['error'] = t('File name should have project codename and version number included separated with hyphen, such as drupal-5.2.tar.gz.');
+          $result['error'] = t('File name should have project codename and version number included separated with hyphen, such as backdrop-5.2.tar.gz.');
         }
       }
     }
   }
 
   $user_feedback = FALSE;
+  $limit = config_get('l10n_server.settings', 'l10n_server_connector_l10n_backdrop_files_limit');
+  $limit = empty($limit) ? 1 : $limit;
   $results = db_query_range("
 SELECT * FROM {l10n_server_release}
-WHERE pid IN (SELECT pid FROM {l10n_server_project} WHERE connector_module = 'l10n_drupal_files' AND status = 1)
+WHERE pid IN (SELECT pid FROM {l10n_server_project} WHERE connector_module = 'l10n_backdrop_files' AND status = 1)
 ORDER BY last_parsed ASC",
-             0, variable_get('l10n_server_connector_l10n_drupal_files_limit', 1)
+             0, $limit
   );
   foreach ($results as $release) {
 
@@ -69,22 +71,22 @@ ORDER BY last_parsed ASC",
 
     if (file_exists($file_name)) {
       if (filemtime($file_name) > $release->last_parsed) {
-        $result = l10n_drupal_parse_package($file_name, $release);
+        $result = l10n_backdrop_parse_package($file_name, $release);
 
         // User feedback, if not automated. Log messages are already done.
         if (isset($result['error']) && !$automated) {
           $user_feedback = TRUE;
-          drupal_set_message($result['error'], 'error');
+          backdrop_set_message($result['error'], 'error');
         }
         elseif (isset($result['message']) && !$automated) {
           $user_feedback = TRUE;
-          drupal_set_message($result['message']);
+          backdrop_set_message($result['message']);
         }
       }
       else {
         if (!$automated) {
           $user_feedback = TRUE;
-          drupal_set_message(t('@release was already parsed, no need to scan again.', array('@release' => $release->download_link)));
+          backdrop_set_message(t('@release was already parsed, no need to scan again.', array('@release' => $release->download_link)));
         }
       }
     }
@@ -96,10 +98,10 @@ ORDER BY last_parsed ASC",
       ->execute();
   }
   if (!$automated && !$user_feedback) {
-    drupal_set_message(t('No (new) local Drupal files found to scan in %workdir.', array('%workdir' => $workdir)));
+    backdrop_set_message(t('No (new) local Backdrop files found to scan in %workdir.', array('%workdir' => $workdir)));
   }
 
-  // Ensure that a Drupal page will be displayed with the messages if any.
+  // Ensure that a Backdrop page will be displayed with the messages if any.
   return '';
 }
 
@@ -107,7 +109,7 @@ ORDER BY last_parsed ASC",
  * Data save callback for local project and release mappings.
  *
  * @param $project_uri
- *   Short project URI, the first part of file names, eg. 'drupal', 'og'.
+ *   Short project URI, the first part of file names, eg. 'backdrop', 'og'.
  * @param $project_title
  *   Project title, effectively the directory name under which this release
  *   was found. Characters allowed in directory names are allowed here.
@@ -118,13 +120,13 @@ ORDER BY last_parsed ASC",
  * @param filedate
  *   Modification date of the package file.
  */
-function l10n_drupal_save_data($project_uri, $project_title, $release_version, $filepath, $filedate) {
+function l10n_backdrop_save_data($project_uri, $project_title, $release_version, $filepath, $filedate) {
   // Save project information first.
   $result = db_query(
     "SELECT * FROM {l10n_server_project} WHERE uri = :uri",
     array(':uri' => $project_uri));
   if ($existing_project = $result->fetchObject()) {
-    if ($existing_project->connector_module == 'l10n_drupal_files') {
+    if ($existing_project->connector_module == 'l10n_backdrop_files') {
       if ($existing_project->status == 0) {
         // Skip this project if it is disabled.
         return;
@@ -133,7 +135,7 @@ function l10n_drupal_save_data($project_uri, $project_title, $release_version, $
       db_update('l10n_server_project')
 	->fields(array('title' => $project_title))
 	->condition('uri', $project_uri)
-	->condition('connector_module', 'l10n_drupal_files')
+	->condition('connector_module', 'l10n_backdrop_files')
 	->execute();
     }
     else {
@@ -141,30 +143,30 @@ function l10n_drupal_save_data($project_uri, $project_title, $release_version, $
       $t_args = array(
         '%uri' => $project_uri,
         '%other_connector' => $existing_project->connector_module,
-        '%this_connector' => 'l10n_drupal_files',
+        '%this_connector' => 'l10n_backdrop_files',
       );
-      watchdog('l10n_drupal', 'An existing project under the URI %uri is already handled by %other_connector. Not possible to add it with %this_connector.', $t_args);
-      drupal_set_message(t('An existing project under the URI %uri is already handled by %other_connector. Not possible to add it with %this_connector.', $t_args), 'error');
+      watchdog('l10n_backdrop', 'An existing project under the URI %uri is already handled by %other_connector. Not possible to add it with %this_connector.', $t_args);
+      backdrop_set_message(t('An existing project under the URI %uri is already handled by %other_connector. Not possible to add it with %this_connector.', $t_args), 'error');
       return;
     }
   }
   else {
-    $home_link = (variable_get('l10n_server_connector_l10n_drupal_files_drupal_home', 0) ?
-                 ('http://drupal.org/project/' . $project_uri) : '');
+    $home_link = (config_get('l10n_server.settings', 'l10n_server_connector_l10n_backdrop_files_backdrop_home') ?
+                 ('https://github.com/backdrop-contrib/' . $project_uri) : '');
     db_insert('l10n_server_project')
       ->fields(array(
           'uri' => $project_uri,
           'title' => $project_title,
           'last_parsed' => 0,
           'home_link' => $home_link,
-          'connector_module' => 'l10n_drupal_files',
+          'connector_module' => 'l10n_backdrop_files',
           'status' => 1,
         ))
       ->execute();
   }
 
   // Grab updated project data and save release information.
-  $sql = "SELECT * FROM {l10n_server_project} WHERE uri = :uri AND connector_module = 'l10n_drupal_files'";
+  $sql = "SELECT * FROM {l10n_server_project} WHERE uri = :uri AND connector_module = 'l10n_backdrop_files'";
   $arg = array(':uri' => $project_uri);
   $project = db_query($sql, $arg)->fetchObject();
 
@@ -207,14 +209,14 @@ function l10n_drupal_save_data($project_uri, $project_title, $release_version, $
  * @param $release
  *   Release object.
  */
-function l10n_drupal_parse_package($package_file, $release) {
+function l10n_backdrop_parse_package($package_file, $release) {
   if (!ini_get('safe_mode')) {
     // This could take a long time.
     @set_time_limit(0);
   }
   $error = $message = '';
 
-  // l10n_drupal_requirements() makes sure there is a status
+  // l10n_backdrop_requirements() makes sure there is a status
   // error if this is not installed.
   if (!class_exists('Archive_Tar')) {
     // Try to load Archive_Tar from PEAR directory structure
@@ -223,7 +225,7 @@ function l10n_drupal_parse_package($package_file, $release) {
 
   // Potx module is already a dependency.
   module_load_include('inc', 'potx');
-  module_load_include('inc', 'l10n_drupal', 'l10n_drupal.potx');
+  module_load_include('inc', 'l10n_backdrop', 'l10n_backdrop.potx');
 
   // Set up status messages if not in automated mode.
   potx_status('set', POTX_STATUS_STRUCTURED);
@@ -231,7 +233,7 @@ function l10n_drupal_parse_package($package_file, $release) {
   // Generate temp folder to extract the tarball. tempnam() creates a regular
   // file, thus reserving the name. But we need a directory. Because $temp_name
   // is unique, we can append '_dir', and it will still be unique.
-  $temp_name = tempnam(file_directory_temp(), 'l10n_drupal_');
+  $temp_name = tempnam(file_directory_temp(), 'l10n_backdrop_');
   $temp_path = $temp_name . '_dir';
 
   // Nothing to do if the file is not there or the extraction folder is taken.
@@ -253,17 +255,19 @@ function l10n_drupal_parse_package($package_file, $release) {
     }
     else {
       // Get all source files and save strings with our callback for this release.
-      l10n_drupal_callback_save_version(array($release->pid, $release->rid));
-      $version = l10n_drupal_detect_major_version($package_file);
-      _l10n_drupal_potx_init();
+      l10n_backdrop_callback_save_version(array($release->pid, $release->rid));
+      $version = l10n_backdrop_detect_major_version($package_file);
+      _l10n_backdrop_potx_init();
       $files = _potx_explore_dir($temp_path, '*', $version);
-      l10n_drupal_added_string_counter(NULL, TRUE);
+      l10n_backdrop_added_string_counter(NULL, TRUE);
       foreach ($files as $name) {
-        _potx_process_file($name, substr($name, strlen($temp_path) + 1), 'l10n_drupal_callback_save_string', 'l10n_drupal_callback_save_version', $version);
+        _potx_process_file($name, substr($name, strlen($temp_path) + 1), 'l10n_backdrop_callback_save_string', 'l10n_backdrop_callback_save_version', $version);
       }
-      potx_finish_processing('l10n_drupal_callback_save_string', $version);
 
-      $sid_count = l10n_drupal_added_string_counter();
+      // TODO: potx_finish_processing was removed from Backdrop. Is this needed?
+      // potx_finish_processing('l10n_backdrop_callback_save_string', $version);
+
+      $sid_count = l10n_backdrop_added_string_counter();
 
       // Delete the extracted files.
       file_unmanaged_delete_recursive($temp_path);
@@ -303,11 +307,11 @@ function l10n_drupal_parse_package($package_file, $release) {
   if ($error) {
     // WARNING: We should not do this reuse in the 6.x port, or otherwise
     // the extractor cannot pick the watchdog() strings up.
-    watchdog('l10n_drupal', $error, array(), WATCHDOG_ERROR);
+    watchdog('l10n_backdrop', $error, array(), WATCHDOG_ERROR);
     $return['error'] = $error;
   }
   if ($message) {
-    watchdog('l10n_drupal', $message);
+    watchdog('l10n_backdrop', $message);
     $return['message'] = $message;
   }
 
@@ -330,7 +334,7 @@ function l10n_drupal_parse_package($package_file, $release) {
  * @param $display_name
  *   Name of file where the version information was found.
  */
-function l10n_drupal_callback_save_version($value = NULL, $display_name = NULL) {
+function l10n_backdrop_callback_save_version($value = NULL, $display_name = NULL) {
   static $pid = 0;
   static $rid = 0;
   static $files = array();
@@ -387,7 +391,7 @@ function l10n_drupal_callback_save_version($value = NULL, $display_name = NULL) 
  *   The string value. If NULL, the array of collected values
  *   are returned for the given $string_mode.
  * @param $context
- *   From Drupal 7, separate contexts are supported. POTX_CONTEXT_NONE is
+ *   From Backdrop 7, separate contexts are supported. POTX_CONTEXT_NONE is
  *   the default, if the code does not specify a context otherwise.
  * @param $display_name
  *   Name of file where the string was found.
@@ -397,7 +401,7 @@ function l10n_drupal_callback_save_version($value = NULL, $display_name = NULL) 
  *   String mode: POTX_STRING_INSTALLER, POTX_STRING_RUNTIME
  *   or POTX_STRING_BOTH.
  */
-function l10n_drupal_callback_save_string($value = NULL, $context = NULL, $display_name = NULL, $line = 0, $string_mode = 2 /*POTX_STRING_RUNTIME*/) {
+function l10n_backdrop_callback_save_string($value = NULL, $context = NULL, $display_name = NULL, $line = 0, $string_mode = 2 /*POTX_STRING_RUNTIME*/) {
 
   static $files = array();
 
@@ -406,7 +410,7 @@ function l10n_drupal_callback_save_string($value = NULL, $context = NULL, $displ
 
   if (!isset($files[$display_name])) {
     // Get file ID for saving, locally cache.
-    $files[$display_name] = l10n_drupal_callback_save_version(NULL, $display_name);
+    $files[$display_name] = l10n_backdrop_callback_save_version(NULL, $display_name);
   }
 
   // Value set but empty. Mark error on empty translatable string. Only trim
@@ -424,7 +428,7 @@ function l10n_drupal_callback_save_string($value = NULL, $context = NULL, $displ
     list($pid, $rid, $fid) = $files[$display_name];
 
     // A \0 separator in the string means we deal with a string with plural variants.
-    // Unlike Drupal core, we store all in the same string, as it is easier
+    // Unlike Backdrop core, we store all in the same string, as it is easier
     // to handle later, and we don't need the individual string parts.
     $select = db_select('l10n_server_string', 's')->fields('s')
       ->condition('hashkey', md5($value . $context));
@@ -457,14 +461,14 @@ function l10n_drupal_callback_save_string($value = NULL, $context = NULL, $displ
           ))
 	->execute();
     }
-    l10n_drupal_added_string_counter($sid);
+    l10n_backdrop_added_string_counter($sid);
   }
 }
 
 /**
  * A counter we use for strings added. Each source strings is counted once.
  */
-function l10n_drupal_added_string_counter($sid = NULL, $reset = FALSE) {
+function l10n_backdrop_added_string_counter($sid = NULL, $reset = FALSE) {
   static $sids = array();
 
   if ($reset) {
@@ -494,7 +498,7 @@ function l10n_drupal_added_string_counter($sid = NULL, $reset = FALSE) {
  *     - 7 for 7.x versions
  *     - 8 for 8.x versions
  */
-function l10n_drupal_detect_major_version($path) {
+function l10n_backdrop_detect_major_version($path) {
   // Only interested in the filename.
   $filename = basename($path);
   // The project name could not contain hyphens, as the project name equals
@@ -512,9 +516,9 @@ function l10n_drupal_detect_major_version($path) {
  * @return
  *   TRUE if the major version is supported, FALSE otherwise.
  */
-function l10n_drupal_is_supported_version($path) {
-  // Only Drupal 5.x, 6.x, 7.x and 8.x projects are supported.
-  return in_array(l10n_drupal_detect_major_version($path), array(5, 6, 7, 8));
+function l10n_backdrop_is_supported_version($path) {
+  // Only Backdrop 1.x projects are supported.
+  return in_array(l10n_backdrop_detect_major_version($path), array(1));
 }
 
 /**
@@ -534,7 +538,7 @@ function l10n_drupal_is_supported_version($path) {
  *   File location in package. If not given, $revision is taken as an array
  *   with project and release id to use to store the file list.
  */
-function l10n_drupal_save_file($revision = NULL, $file = NULL) {
+function l10n_backdrop_save_file($revision = NULL, $file = NULL) {
   static $pid = 0;
   static $rid = 0;
   static $files = array();
@@ -582,7 +586,7 @@ function l10n_drupal_save_file($revision = NULL, $file = NULL) {
  * @param $value
  *   String value to store.
  * @param $context
- *   From Drupal 7, separate contexts are supported. POTX_CONTEXT_NONE is
+ *   From Backdrop, separate contexts are supported. POTX_CONTEXT_NONE is
  *   the default, if the code does not specify a context otherwise.
  * @param $file
  *   Name of file the string occured in.
@@ -592,7 +596,7 @@ function l10n_drupal_save_file($revision = NULL, $file = NULL) {
  *   String type: POTX_STRING_INSTALLER, POTX_STRING_RUNTIME
  *   or POTX_STRING_BOTH.
  */
-function l10n_drupal_save_string($value = NULL, $context = NULL, $file = NULL, $line = 0, $string_type = 2 /*POTX_STRING_RUNTIME*/) {
+function l10n_backdrop_save_string($value = NULL, $context = NULL, $file = NULL, $line = 0, $string_type = 2 /*POTX_STRING_RUNTIME*/) {
   static $files = array();
 
   // Strip all slashes from string.
@@ -600,7 +604,7 @@ function l10n_drupal_save_string($value = NULL, $context = NULL, $file = NULL, $
 
   if (!isset($files[$file])) {
     // Get file ID for saving, locally cache.
-    $files[$file] = l10n_drupal_save_file(NULL, $file);
+    $files[$file] = l10n_backdrop_save_file(NULL, $file);
   }
 
   // The database uses a TEXT field for storage which has a maximum length of
@@ -622,7 +626,7 @@ function l10n_drupal_save_string($value = NULL, $context = NULL, $file = NULL, $
     return;
   }
 
-  if (!drupal_validate_utf8($value)) {
+  if (!backdrop_validate_utf8($value)) {
     potx_status('error', t('Invalid UTF-8 string attempted to be localized.'), $file, $line);
     return;
   }
@@ -635,7 +639,7 @@ function l10n_drupal_save_string($value = NULL, $context = NULL, $file = NULL, $
     $context= !is_null($context) ? $context : '';
 
     // A \0 separator in the string means we deal with a string with plural variants.
-    // Unlike Drupal core, we store all in the same string, as it is easier
+    // Unlike Backdrop core, we store all in the same string, as it is easier
     // to handle later, and we don't need the individual string parts.
     $sid = db_select("l10n_server_string", 'l')->fields('l', array('sid'))
       ->condition('hashkey', md5($value . $context))->execute()->fetchField();
@@ -661,6 +665,6 @@ function l10n_drupal_save_string($value = NULL, $context = NULL, $file = NULL, $
         'type' => $string_type
       ))->execute();
     }
-    l10n_drupal_added_string_counter($sid);
+    l10n_backdrop_added_string_counter($sid);
   }
 }

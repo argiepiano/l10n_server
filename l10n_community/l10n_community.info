@@ -1,9 +1,9 @@
 name = Localization community UI
+type = module
 description = Community interface for string translation
 dependencies[] = l10n_server
 dependencies[] = potx (>=3)
 package = "Localization server"
-core = 7.x
-php = 5
+backdrop = 1.x
 
-files[] = tests/l10n_community.test
+; files[] = tests/l10n_community.test

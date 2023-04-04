@@ -113,7 +113,7 @@ function l10n_groups_og_context_negotiation_info() {
 function l10n_groups_form_alter(&$form, $form_state, $form_id) {
   if ($form_id == 'l10n_group_node_form') {
     if (empty($form['l10n_group_language']['#value']) && empty($form['l10n_group_language']['#options'])) {
-      drupal_set_message(t("All available languages have groups now. You cannot create another group until a new language is added on the administration interface."), 'error');
+      backdrop_set_message(t("All available languages have groups now. You cannot create another group until a new language is added on the administration interface."), 'error');
       $form['submit']['#disabled'] = TRUE;
     }
     $form['body'][LANGUAGE_NONE][0]['#title'] = t('Welcome message');
@@ -134,7 +134,7 @@ function l10n_groups_init() {
   if (($item = menu_get_item()) && ($item['path'] == 'node/%') && ($item['page_arguments'][0]->type == 'l10n_group')) {
     // If on node view page for l10n_group nodes, redirect to our more full featured
     // version of the group with translation tabs and all.
-    drupal_goto('translate/languages/' . $item['page_arguments'][0]->l10n_group_language);
+    backdrop_goto('translate/languages/' . $item['page_arguments'][0]->l10n_group_language);
   }
 }
 
@@ -166,12 +166,6 @@ function l10n_groups_block_info() {
   $blocks = array(
     'info' => array(
       'info' => t('Localization group information'),
-      'cache' => DRUPAL_NO_CACHE,
-      'visibility' => BLOCK_VISIBILITY_NOTLISTED,
-      'pages' => 'translate/languages/*/translate',
-      'weight' => -12,
-      'region' => 'sidebar_second',
-      'status' => 1,
     ),
   );
   return $blocks;
@@ -189,7 +183,7 @@ function l10n_groups_block_view($delta) {
       // Display on language pages or group node.
       if ($on_language && !empty($context)) {
         // Only display group details if we have a group context.
-        $group = entity_load_single($context['group_type'], $context['gid']);
+        $group = entity_load($context['group_type'], $context['gid']);
         if ($context && entity_access('view', 'node', $group)) {
           // Get the membership informations
           $og_membership = og_get_membership('node', $group->nid, 'user', $user->uid);
@@ -233,8 +227,8 @@ function l10n_groups_block_view($delta) {
           }
           // Anonymous Group Links
           if (!$user->uid) {
-            $options = array('query' => array('destination' => drupal_get_destination()));
-            if (variable_get('user_register', 1) == 0) {
+            $options = array('query' => array('destination' => backdrop_get_destination()));
+            if (config_get('system.core', 'user_register') == USER_REGISTER_ADMINISTRATORS_ONLY) {
               $links['must_login'] = t('You must <a href="!login">login</a> in order to post into this group.', array('!login' => url("user/login", $options)));
             }
             else {
@@ -246,7 +240,7 @@ function l10n_groups_block_view($delta) {
           }
 
           // Modify these links by reference
-          drupal_alter('l10n_groups_links', $links, $group);
+          backdrop_alter('l10n_groups_links', $links, $group);
 
           $block['content'] = theme('item_list', array('items' => $links, 'type' => 'ul'));
           $block['subject'] = theme('link', array(
@@ -266,25 +260,7 @@ function l10n_groups_block_view($delta) {
 function l10n_groups_views_api() {
   return array(
     'api' => 3,
-    'path' => drupal_get_path('module', 'l10n_groups'),
-  );
-}
-
-// = Organic groups node type ==================================================
-
-/**
- * Implements hook_node_info().
- *
- * We expose one node type to tie into the organic groups system, and maintain a
- * list of localization community related ones.
- */
-function l10n_groups_node_info() {
-  return array(
-    'l10n_group' => array(
-      'name' => t('Translation group'),
-      'base' => 'l10n_groups',
-      'description' => t('A language community around Drupal project translations.'),
-    ),
+    'path' => backdrop_get_path('module', 'l10n_groups'),
   );
 }
 
@@ -418,7 +394,7 @@ function l10n_groups_form($node, &$form_state) {
     );
 
     // Add a message to configure plurals for language.
-    drupal_set_message(t('Remember to configure plurals for the language you mean to create a group for.'), 'warning');
+    backdrop_set_message(t('Remember to configure plurals for the language you mean to create a group for.'), 'warning');
   }
 
   return $form;
@@ -427,7 +403,7 @@ function l10n_groups_form($node, &$form_state) {
 /**
  * Implements hook_l10n_groups_links_alter().
  *
- * @todo: move this to a localize.drupal.org specific module
+ * @todo: move this to a localize.backdrop.org specific module
  */
 function l10n_groups_l10n_groups_links_alter(&$links, $group) {
   $link = NULL;
@@ -442,7 +418,7 @@ function l10n_groups_l10n_groups_links_alter(&$links, $group) {
       array(
         'attributes' => array('rel' => 'nofollow', 'class' => array('link-button')),
         'html' => TRUE,
-        'query' => drupal_get_destination(),
+        'query' => backdrop_get_destination(),
       )
     );
   }
@@ -479,7 +455,7 @@ function l10n_groups_pick_go() {
     $l10n_groups = array();
     foreach ($groups as $group_type => $group) {
       foreach ($group as $gid) {
-        $node = entity_load_single($group_type, $gid);
+        $node = entity_load($group_type, $gid);
         if ($node->type == 'l10n_group') {
           $l10n_groups[$node->l10n_group_language] = l($node->title, 'translate/languages/' . $node->l10n_group_language);
         }
@@ -514,7 +490,7 @@ function l10n_groups_broadcast_access($langcode) {
 function l10n_groups_broadcast($langcode) {
   $groups = l10n_groups_get_groups();
   module_load_include('inc', 'og', 'og.pages');
-  return drupal_get_form('og_broadcast_form', node_load($groups[$langcode]));
+  return backdrop_get_form('og_broadcast_form', node_load($groups[$langcode]));
 }
 
 // = Summary page outputs ======================================================
@@ -526,7 +502,7 @@ function l10n_groups_broadcast($langcode) {
  */
 function l10n_groups_l10n_community_build_language_page($language) {
   $groups = l10n_groups_get_groups();
-  $lang_code = $language->language;
+  $lang_code = $language->langcode;
   if (isset($groups[$lang_code]) && node_access('view', $group_node = node_load($groups[$lang_code]))) {
     if (!empty($group_node->body[LANGUAGE_NONE][0])) {
       $output = $group_node->body[LANGUAGE_NONE][0]['safe_value'];

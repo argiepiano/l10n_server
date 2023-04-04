@@ -9,54 +9,58 @@
  * Settings form callback.
  */
 function l10n_packager_settings_form($form, &$form_state) {
+  $form['#config'] = 'l10n_packager.settings';
+  $config = config('l10n_packager.settings');
   $form['l10n_packager_cron'] = array(
-    '#title' => t('Generate packages on every Drupal cron run'),
+    '#title' => t('Generate packages on every Backdrop cron run'),
     '#type' => 'checkbox',
-    '#default_value' => variable_get('l10n_packager_cron', 0),
+    '#default_value' => $config->get('l10n_packager_cron'),
   );
   $form['l10n_packager_directory'] = array(
     '#title' => t('Directory for generated packages'),
-    '#description' => t('The directory on the local file system to use to store packages generated. Either relative to the Drupal installation directory or an absolute path on your file system. Drupal should have read and write access to the files and directories found there.'),
+    '#description' => t('The directory on the local file system to use to store packages generated. Either relative to the Backdrop installation directory or an absolute path on your file system. Backdrop should have read and write access to the files and directories found there.'),
     '#type' => 'textfield',
     '#required' => TRUE,
     '#default_value' => l10n_packager_directory(),
     // Create directory by default if possible.
     '#after_build' => array('l10n_packager_admin_check_directory'),
   );
+  $directory = $config->get('l10n_packager_update_url');
+  $directory = empty($directory) ? file_create_url(l10n_packager_directory()) : $directory;
   $form['l10n_packager_update_url'] = array(
     '#title' => t('Root URL for translation downloads'),
     '#type' => 'textfield',
-    '#default_value' => variable_get('l10n_packager_update_url', file_create_url(l10n_packager_directory())),
+    '#default_value' => $directory,
     '#description' => t('Root URL for the client to build file URLs and fetch updates. The public facing URL for the package directory defined above. Leave blank for not providing any.'),
   );
   $form['l10n_packager_filepath'] = array(
     '#title' => t('Path structure for generated packages'),
     '#type' => 'textfield',
     '#required' => TRUE,
-    '#default_value' => variable_get('l10n_packager_filepath', L10N_PACKAGER_FILEPATH),
+    '#default_value' => $config->get('l10n_packager_filepath'),
     '#description' => t("Available tokens are: %project, %release, %core, %version, %extra, %language."),
   );
   $form['l10n_packager_release_limit'] = array(
     '#title' => t('Number of releases to check at once'),
     '#description' => t('The number of releases to check on a manual or cron run.'),
     '#type' => 'select',
-    '#options' => drupal_map_assoc(array(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 30, 40, 50, 60, 70, 80, 90, 100)),
-    '#default_value' => variable_get('l10n_packager_release_limit', 10),
+    '#options' => backdrop_map_assoc(array(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 30, 40, 50, 60, 70, 80, 90, 100)),
+    '#default_value' => $config->get('l10n_packager_release_limit'),
   );
   $form['l10n_packager_file_limit'] = array(
     '#title' => t('Maximum number of files to package at once'),
     '#description' => t('The number of files to package on a manual or cron run.'),
     '#type' => 'select',
-    '#options' => drupal_map_assoc(array(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 30, 40, 50, 60, 70, 80, 90, 100)),
-    '#default_value' => variable_get('l10n_packager_file_limit', 1),
+    '#options' => backdrop_map_assoc(array(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 30, 40, 50, 60, 70, 80, 90, 100)),
+    '#default_value' => $config->get('l10n_packager_file_limit'),
   );
   // Logging settings
-  $period = array(0 => t('Never'), 1 => t('Every cron run')) + drupal_map_assoc(array(3600, 10800, 21600, 32400, 43200, 86400, 172800, 259200, 604800, 1209600, 2419200, 4838400, 9676800), 'format_interval');
+  $period = array(0 => t('Never'), 1 => t('Every cron run')) + backdrop_map_assoc(array(3600, 10800, 21600, 32400, 43200, 86400, 172800, 259200, 604800, 1209600, 2419200, 4838400, 9676800), 'format_interval');
   $form['l10n_packager_update'] = array(
     '#title' => t('Repackaging interval'),
     '#type' => 'select',
     '#options' => $period,
-    '#default_value' => variable_get('l10n_packager_update', 0),
+    '#default_value' => $config->get('l10n_packager_update'),
     '#description' => t('Time interval for the translations to be automatically repackaged.'),
   );
 
@@ -83,12 +87,12 @@ function l10n_packager_admin_repackage_page() {
   $projects = l10n_server_get_projects();
 
   $content = array();
-  $content[] = drupal_get_form('l10n_packager_admin_projects_form', $projects);
-  $content[] = drupal_get_form('l10n_packager_admin_languages_form');
+  $content[] = backdrop_get_form('l10n_packager_admin_projects_form', $projects);
+  $content[] = backdrop_get_form('l10n_packager_admin_languages_form');
 
   // @todo: make this project agnostic for others running l10n_server.
-  if (!empty($projects['drupal'])) {
-    $content[] = drupal_get_form('l10n_packager_admin_installer_form', $projects['drupal']);
+  if (!empty($projects['backdrop'])) {
+    $content[] = backdrop_get_form('l10n_packager_admin_installer_form', $projects['backdrop']);
   }
 
   return $content;
@@ -223,7 +227,7 @@ function l10n_packager_admin_projects_form_submit($form, $form_state) {
       batch_set($batch);
     }
     else {
-      drupal_set_message(t('No releases found for repackaging.'), 'error');
+      backdrop_set_message(t('No releases found for repackaging.'), 'error');
     }
   }
   elseif ($op == t('Mark for repackaging')) {
@@ -235,25 +239,25 @@ function l10n_packager_admin_projects_form_submit($form, $form_state) {
         ))
       ->condition('rid', $query, 'IN')
       ->execute();
-    drupal_set_message(t("Marked %count releases for repackaging.", array('%count' => $affected_rows)));
+    backdrop_set_message(t("Marked %count releases for repackaging.", array('%count' => $affected_rows)));
   }
 }
 
 /**
- * Form callback. Package installer tarballs for Drupal core.
+ * Form callback. Package installer tarballs for Backdrop core.
  *
  * The tarball created is offered for download, so the user can get it to their
  * install profile right away (given multiple files are generated).
  *
  * @todo
- *   Make it possible to reuse this for non-Drupal.org use, eg. by letting the
+ *   Make it possible to reuse this for non-Backdrop.org use, eg. by letting the
  *   user pick a project and a release.
  */
 function l10n_packager_admin_installer_form($form, &$form_state, $project) {
   $form['installer'] = array(
     '#type' => 'fieldset',
     '#title' => t('Install profile packaging'),
-    '#description' => t('Generate a set of .po files to be used in a Drupal 6 install profile from Drupal core.'),
+    '#description' => t('Generate a set of .po files to be used in a Backdrop 6 install profile from Backdrop core.'),
   );
 
   $form['installer']['project'] = array(
@@ -298,15 +302,15 @@ function l10n_packager_admin_installer_form_submit($form, $form_state) {
   foreach ($languages as $language) {
     $output = l10n_community_export($form_state['values']['project']->uri, $form_state['values']['release'], $language, FALSE, TRUE, TRUE);
     // Add file to the tgz. We need to purely use the language code because
-    // Drupal 6 uses that to identify the language.
-    $tar->addString($language->language . '.po', file_get_contents($output[1]));
+    // Backdrop 6 uses that to identify the language.
+    $tar->addString($language->langcode . '.po', file_get_contents($output[1]));
   }
 
   $releases = l10n_server_get_releases($form_state['values']['project']->uri);
   $release = $releases[$form_state['values']['release']];
 
   // Return compressed archive to user.
-  header('Content-Disposition: attachment; filename=drupal-installer-' . $release->title . '.tgz');
+  header('Content-Disposition: attachment; filename=backdrop-installer-' . $release->title . '.tgz');
   header('Content-Type: application/x-compressed');
   echo file_get_contents($tempfile);
   unlink($tempfile);

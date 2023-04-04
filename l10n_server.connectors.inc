@@ -1,5 +1,4 @@
 <?php
-
 /**
  * @file
  *   Administrative functions for localization server connectors.
@@ -14,19 +13,21 @@ function l10n_server_connectors_overview() {
   $connectors = l10n_server_get_connectors();
   $sources = l10n_server_get_sources();
   if (empty($connectors) || empty($sources)) {
-    drupal_set_message(t('No localization server connectors found.'), 'error');
+    backdrop_set_message(t('No localization server connectors found.'), 'error');
     return '';
   }
-  return drupal_get_form('l10n_server_admin_connectors_form', $connectors, $sources);
+  return backdrop_get_form('l10n_server_admin_connectors_form', $connectors, $sources);
 }
 
 /**
  * Connector overview setup form.
  */
 function l10n_server_admin_connectors_form($form, &$form_state, $connectors, $sources) {
+  $config = config('l10n_server.settings');
   // Save for theming.
   $form['#connector_info'] = $connectors;
   $form['#source_info'] = $sources;
+  $form['#config'] = 'l10n_server.settings';
 
   // Build checkboxes to maintain enabled status.
   $form['connectors'] = array();
@@ -42,7 +43,7 @@ function l10n_server_admin_connectors_form($form, &$form_state, $connectors, $so
         $links[] = '';
       }
 
-      if (!empty($sources[$source]['scan']) && variable_get('l10n_server_connector_' . $name . '_' . $source . '_enabled', 0)) {
+      if (!empty($sources[$source]['scan']) && $config->get('l10n_server_connector_' . $name . '_' . $source . '_enabled')) {
         $links[] = l(t('scan'), 'admin/l10n_server/connectors/scan/' . $name . '/' . $source);
       }
       else {
@@ -54,7 +55,7 @@ function l10n_server_admin_connectors_form($form, &$form_state, $connectors, $so
         'l10n_server_connector_' . $name . '_' . $source . '_enabled' => array(
           '#title' => t('@title from @source', array('@title' => $info['title'], '@source' => $sources[$source]['title'])),
           '#type' => 'checkbox',
-          '#default_value' => variable_get('l10n_server_connector_' . $name . '_' . $source . '_enabled', 0),
+          '#default_value' => $config->get('l10n_server_connector_' . $name . '_' . $source . '_enabled'),
           '#l10n_server_source' => $source,
           '#l10n_server_connector' => $name,
         ),
@@ -84,7 +85,7 @@ function theme_l10n_server_admin_connectors_form($variables) {
         if (!empty($item['#type']) && ($item['#type'] == 'checkbox')) {
           $row[1] = $item['#title'];
           unset($item['#title']);
-          $row[0] = drupal_render($item);
+          $row[0] = backdrop_render($item);
         }
         elseif (!empty($item['#type']) && ($item['#type'] == 'value')) {
           $row = array_merge($row, $item['#value']);
@@ -103,7 +104,7 @@ function theme_l10n_server_admin_connectors_form($variables) {
                'data' => t('Operations'),
              ));
   $output = theme('table', array('header' => $headers, 'rows' => $rows));
-  $output .= drupal_render_children($form);
+  $output .= backdrop_render_children($form);
   return $output;
 }
 
@@ -118,18 +119,18 @@ function l10n_server_connector_configure($connector = NULL, $source = NULL) {
 
   if (!isset($connectors[$connector]) || !isset($sources[$source]) || empty($sources[$source]['form'])) {
     // We should be able to display a form here.
-    return drupal_not_found();
+    return backdrop_not_found();
   }
 
   // Include file to handle form if needed.
   if (!empty($sources[$source]['file'])) {
-    include_once DRUPAL_ROOT . '/' . $sources[$source]['file'];
+    include_once BACKDROP_ROOT . '/' . $sources[$source]['file'];
   }
 
-  drupal_set_title(t('@title from @source connector configuration', array('@title' => $connectors[$connector]['title'], '@source' => $sources[$source]['title'])), PASS_THROUGH);
+  backdrop_set_title(t('@title from @source connector configuration', array('@title' => $connectors[$connector]['title'], '@source' => $sources[$source]['title'])), PASS_THROUGH);
 
   // TODO $connector needs to have $form as its first parameter.
-  return drupal_get_form($sources[$source]['form'], $connector, $source);
+  return backdrop_get_form($sources[$source]['form'], $connector, $source);
 }
 
 // = Built-in file connector configuration =====================================
@@ -138,28 +139,36 @@ function l10n_server_connector_configure($connector = NULL, $source = NULL) {
  * Settings form callback.
  */
 function l10n_server_connectors_files_settings_form($form, &$form_state, $connector_name, $source_name) {
+  $config = config('l10n_server.settings');
   $form['#connector_name'] = $connector_name;
+  $form['#config'] = 'l10n_server.settings';
 
+
+  $directory =  $config->get('l10n_server_connector_' . $connector_name . '_' . $source_name . '_directory');
   $form['l10n_server_connector_' . $connector_name . '_' . $source_name . '_directory'] = array(
     '#title' => t('Source directory'),
     '#description' => t('The directory on the local file system to be scanned for source data. Either relative to the Drupal site root or an absolute path on your file system. Drupal should have read access to the files and directories found there. Projects are identified based on subdirectory names or the first part of filenames if put directly in the root directory. Releases are identified based on the second part of package filenames. Examples: Fishbowl/fishbowl-1.2.tar.gz is from project "Fishbowl" in version 1.2, while campwizard-3.4.tar.gz is project "campwizard" in version 3.4.'),
     '#type' => 'textfield',
     '#required' => TRUE,
-    '#default_value' => variable_get('l10n_server_connector_' . $connector_name . '_' . $source_name . '_directory', conf_path() . '/files/' . $connector_name),
+    '#default_value' => !empty($directory) ? $directory : conf_path() . '/files/' . $connector_name,
     // Create directory by default if possible.
     '#after_build' => array('l10n_server_connectors_files_check_directory'),
   );
+
+  $limit = $config->get('l10n_server_connector_' . $connector_name . '_' . $source_name . '_limit');
   $form['l10n_server_connector_' . $connector_name . '_' . $source_name . '_limit'] = array(
     '#title' => t('Number of releases to look at once'),
     '#description' => t('The number of releases to scan on a manual or cron run. Scanning is synchronous, so you need to wait while extraction and parsing of file content is underway.'),
     '#type' => 'select',
-    '#options' => drupal_map_assoc(array(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30)),
-    '#default_value' => variable_get('l10n_server_connector_' . $connector_name . '_' . $source_name . '_limit', 1),
+    '#options' => backdrop_map_assoc(array(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30)),
+    '#default_value' => !empty($limit) ? $limit : 1,
   );
+
+  $cron = $config->get('l10n_server_connector_' . $connector_name . '_' . $source_name . '_cron');
   $form['l10n_server_connector_' . $connector_name . '_' . $source_name . '_cron'] = array(
     '#title' => t('Run scanning on cron'),
     '#type' => 'checkbox',
-    '#default_value' => variable_get('l10n_server_connector_' . $connector_name . '_' . $source_name . '_cron', 0),
+    '#default_value' => !empty($cron) ? $cron : 0,
     '#description' => t('It is advised to set up a regular cron run to parse new files, instead of hitting the Scan tab manually.'),
   );
   return system_settings_form($form);
@@ -184,12 +193,12 @@ function l10n_server_connector_scan($connector = NULL, $source = NULL) {
 
   if (!isset($connectors[$connector]) || !isset($sources[$source]) || empty($sources[$source]['scan']) || empty($connectors[$connector]['scan'])) {
     // We should be able to invoke a scanner callback here.
-    return drupal_not_found();
+    return backdrop_not_found();
   }
 
   // Include file to handle form if needed.
   if (!empty($connectors[$connector]['file'])) {
-    include_once DRUPAL_ROOT . '/' . $connectors[$connector]['file'];
+    include_once BACKDROP_ROOT . '/' . $connectors[$connector]['file'];
   }
 
   return call_user_func($connectors[$connector]['scan'], $source);

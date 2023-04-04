@@ -14,11 +14,11 @@ function l10n_community_explore_languages() {
 
   // Checking whether we have languages and strings.
   if (!$languages = l10n_community_get_languages()) {
-    drupal_set_message(t('No languages to list.'), 'error');
+    backdrop_set_message(t('No languages to list.'), 'error');
     return '';
   }
   if (!$num_source = l10n_community_get_string_count('all')) {
-    drupal_set_message(t('No strings to translate.'), 'error');
+    backdrop_set_message(t('No strings to translate.'), 'error');
     return '';
   }
 
@@ -27,7 +27,9 @@ function l10n_community_explore_languages() {
   $table_rows = array();
   $string_counts = l10n_community_get_string_count('languages');
   foreach ($languages as $langcode => $language) {
-    if (empty($language->plurals)) {
+    $all_language_plurals = state_get('locale_translation_plurals', array());
+    $language_plurals = !empty($all_language_plurals[$langcode]['plurals']) ? $all_language_plurals[$langcode]['plurals'] : null; 
+    if (empty($language_plurals)) {
       $table_rows[] = array(
         array(
           'data' => t($language->name),
@@ -35,7 +37,7 @@ function l10n_community_explore_languages() {
           'class' => array('rowhead'),
         ),
         array(
-          'data' => t('Uninitialized plural formula. Please set up the plural formula in <a href="@language-config">the langauge configuration</a> or alternatively <a href="@import-url">import a valid interface translation</a> for Drupal in this language.', array(
+          'data' => t('Uninitialized plural formula. Please set up the plural formula in <a href="@language-config">the langauge configuration</a> or alternatively <a href="@import-url">import a valid interface translation</a> for Backdrop in this language.', array(
             '@import-url' => url('admin/structure/translate/import'),
             '@language-config' => url('admin/config/language'),
           )),
@@ -118,9 +120,10 @@ function l10n_server_sort_by_column_language($a, $b) {
  */
 function l10n_community_explore_projects() {
   $output = array();
+  $config = config('l10n_community.settings');
 
   // Kill switch in case we don't want statistics at all.
-  if (!variable_get('l10n_community_stats_enabled', TRUE)) {
+  if (!$config->get('l10n_community_stats_enabled')) {
     return t('Statistics for projects have been disabled.');
   }
 
@@ -134,10 +137,10 @@ function l10n_community_explore_projects() {
   }
 
   // Make a first query tp get the total number of projects.
-  $pager_setting = variable_get('l10n_community_project_per_page', 10);
+  $pager_setting = $config->get('l10n_community_project_per_page');
   $options['initial'] = $initial;
   if (!$all_projects = l10n_server_get_projects($options)) {
-    drupal_set_message(t('No projects found.'), 'error');
+    backdrop_set_message(t('No projects found.'), 'error');
     return '';
   }
   $options['pager'] = $pager_setting;
@@ -146,7 +149,7 @@ function l10n_community_explore_projects() {
   // If we have more projects compared to what we show at the moment, display
   // an autocomplete jumpbox to jump to a project.
   if (count($all_projects) > $pager_setting) {
-    $output[] = drupal_get_form('l10n_community_explore_projects_jump_form');
+    $output[] = backdrop_get_form('l10n_community_explore_projects_jump_form');
   }
 
   // Fetch all the pids, that we already have.
@@ -155,7 +158,7 @@ function l10n_community_explore_projects() {
     $pids [] = $project->pid;
   }
 
-  if (variable_get('l10n_community_stats_explore_projects_enabled', TRUE)) {
+  if ($config->get('l10n_community_stats_explore_projects_enabled')) {
     // General community statistics.
     $string_counts = array();
     $query = db_select('l10n_server_line', 'l')
@@ -196,7 +199,7 @@ function l10n_community_explore_projects() {
       'data' => l($project->title, 'translate/projects/' . $project->uri),
       'class' => array('rowhead'),
     );
-    if (variable_get('l10n_community_stats_explore_projects_enabled', TRUE)) {
+    if ($config->get('l10n_community_stats_explore_projects_enabled')) {
       // Multiply summary count by languages handled, so we get an
       // accurate picture of completeness.
       $row = array_merge($row, theme('l10n_community_progress_columns', array(
@@ -209,7 +212,7 @@ function l10n_community_explore_projects() {
   }
 
   $header = array(array('data' => t('Project'), 'class' => array('rowhead')));
-  if (variable_get('l10n_community_stats_explore_projects_enabled', TRUE)) {
+  if ($config->get('l10n_community_stats_explore_projects_enabled')) {
     $header = array_merge($header, array(
       t('Progress'),
       t('Untranslated'),
@@ -251,7 +254,7 @@ function l10n_community_explore_projects_jump_form() {
  */
 function l10n_community_explore_projects_jump_form_submit($form, &$form_state) {
   if (!empty($form_state['values']['project']) && ($uri = l10n_community_project_uri_by_title($form_state['values']['project']))) {
-    drupal_goto('translate/projects/' . $uri);
+    backdrop_goto('translate/projects/' . $uri);
   }
 }
 
@@ -264,7 +267,7 @@ function l10n_community_explore_projects_jump_form_submit($form, &$form_state) {
  */
 function l10n_community_overview_language($langcode = NULL) {
   if (!isset($langcode)) {
-    drupal_set_message(t('No language selected.'), 'error');
+    backdrop_set_message(t('No language selected.'), 'error');
     return '';
   }
 
@@ -277,7 +280,7 @@ function l10n_community_overview_language($langcode = NULL) {
   if (empty($content_output)) {
     // Try to fill in with taxonomy.
     if (module_exists('taxonomy')) {
-      if ($terms = taxonomy_get_term_by_name('l10n-server-' . $languages[$langcode]->language)) {
+      if ($terms = taxonomy_term_load_multiple_by_name('l10n-server-' . $languages[$langcode]->langcode)) {
         // Found tag, look for posts.
         $result = taxonomy_select_nodes(reset($terms)->tid);
         foreach ($result as $nid) {
@@ -287,7 +290,7 @@ function l10n_community_overview_language($langcode = NULL) {
       if (empty($content_output)) {
         // Either no such tag, or that tag has no posts currently.
         $content_output[] = array(
-          '#markup' => '<p>' . t('There are currently no posts set for display here. Mark posts to display here with the %tagname tag, using the taxonomy module.', array('%tagname' => 'l10n-server-' . $languages[$langcode]->language)) . '</p>',
+          '#markup' => '<p>' . t('There are currently no posts set for display here. Mark posts to display here with the %tagname tag, using the taxonomy module.', array('%tagname' => 'l10n-server-' . $languages[$langcode]->langcode)) . '</p>',
         );
       }
     }
@@ -301,8 +304,8 @@ function l10n_community_overview_language($langcode = NULL) {
 
   // Set title and breadcrumb. Do this late since the OG code will attempt to
   // set a title and a breadcrumb that is not fitting for us.
-  drupal_set_title(t('@language overview', array('@language' => t($languages[$langcode]->name))), PASS_THROUGH);
-  drupal_set_breadcrumb(
+  backdrop_set_title(t('@language overview', array('@language' => t($languages[$langcode]->name))), PASS_THROUGH);
+  backdrop_set_breadcrumb(
     array(
       l(t('Home'), NULL),
       l(t('Translate'), 'translate'),
@@ -321,7 +324,7 @@ function l10n_community_overview_language($langcode = NULL) {
 function l10n_community_overview_project($uri = NULL) {
 
   // Add missing breadcrumb.
-  drupal_set_breadcrumb(
+  backdrop_set_breadcrumb(
     array(
       l(t('Home'), NULL),
       l(t('Translate'), 'translate'),
@@ -330,22 +333,22 @@ function l10n_community_overview_project($uri = NULL) {
   );
 
   if (!isset($uri)) {
-    drupal_set_message(t('No project selected.'), 'error');
+    backdrop_set_message(t('No project selected.'), 'error');
     return '';
   }
-  drupal_set_title(t('@project project translations', array('@project' => drupal_get_title())), PASS_THROUGH);
+  backdrop_set_title(t('@project project translations', array('@project' => backdrop_get_title())), PASS_THROUGH);
 
   if (!$languages = l10n_community_get_languages()) {
-    drupal_set_message(t('No languages to list.'), 'error');
+    backdrop_set_message(t('No languages to list.'), 'error');
     return '';
   }
 
   $project = l10n_server_get_projects(array('uri' => $uri));
-  if (!variable_get('l10n_community_stats_enabled', TRUE)) {
+  if (!config_get('l10n_community.settings', 'l10n_community_stats_enabled')) {
     return t('Statistics for projects have been disabled.');
   }
   elseif (!$num_source = l10n_community_get_string_count('project', $project->pid)) {
-    drupal_set_message(t('No strings found to translate in this project yet.'), 'warning');
+    backdrop_set_message(t('No strings found to translate in this project yet.'), 'warning');
     return '';
   }
 
@@ -412,7 +415,7 @@ function l10n_community_block_stats_project($project) {
  */
 function l10n_community_block_stats_language($language) {
   // Provide a summary of the activity.
-  $stats_numbers = l10n_community_get_stats($language->language);
+  $stats_numbers = l10n_community_get_stats($language->langcode);
   return array(
     'subject' => t('Translation statistics'),
     'content' => theme('item_list', array(
@@ -435,7 +438,7 @@ function l10n_community_block_stats_language($language) {
  */
 function l10n_community_block_contributors_language($language) {
   // Provide a summary of top contributors.
-  $people = l10n_community_get_string_count('top-people', $language->language);
+  $people = l10n_community_get_string_count('top-people', $language->langcode);
   $block = array(
     'subject' => t('Top contributors'),
   );
@@ -479,7 +482,7 @@ function l10n_community_language_progress_for_project($project, $languages, $tit
   );
   // Check for l10n_packager, for faster queries but only on latest release.
   $remove_suggestions = FALSE;
-  if (module_exists('l10n_packager') && variable_get('l10n_community_package_count', TRUE)) {
+  if (module_exists('l10n_packager') && config_get('l10n_community.settings', 'l10n_community_package_count')) {
     list($num_source, $string_counts) = l10n_community_get_l10n_packager_string_count($project->pid);
     $remove_suggestions = TRUE;
   }
@@ -489,15 +492,17 @@ function l10n_community_language_progress_for_project($project, $languages, $tit
   }
 
   $table = array();
+  $locale_plurals = state_get('locale_translation_plurals', array());
+
   foreach ($languages as $langcode => $language) {
-    if (empty($language->plurals)) {
+    if (empty($locale_plurals[$language->langcode]['plurals'])) {
       $table[] = array(
         array(
           'data' => t($language->name) . ' (' . $langcode . ')',
           'class' => array('rowhead'),
         ),
         array(
-          'data' => t('Uninitialized plural formula. Please set up the plural formula in <a href="@language-config">the langauge configuration</a> or alternatively <a href="@import-url">import a valid interface translation</a> for Drupal in this language.', array(
+          'data' => t('Uninitialized plural formula. Please set up the plural formula in <a href="@language-config">the langauge configuration</a> or alternatively <a href="@import-url">import a valid interface translation</a> for Backdrop in this language.', array(
             '@import-url' => url('admin/structure/translate/import'),
             '@language-config' => url('admin/config/language'),
           )),
@@ -551,16 +556,16 @@ function l10n_community_language_progress_for_project($project, $languages, $tit
  */
 function l10n_community_project_releases($uri = NULL) {
   if (!$uri) {
-    drupal_set_message(t('No project selected.'), 'error');
+    backdrop_set_message(t('No project selected.'), 'error');
     return '';
   }
   $project = l10n_server_get_projects(array('uri' => $uri));
   $project_name = $project->title;
-  drupal_set_title(t('@project releases', array('@project' => $project_name)), PASS_THROUGH);
+  backdrop_set_title(t('@project releases', array('@project' => $project_name)), PASS_THROUGH);
 
   $releases = l10n_server_get_releases($uri);
   if (empty($releases)) {
-    drupal_set_message(t('No releases found for this project yet.'), 'warning');
+    backdrop_set_message(t('No releases found for this project yet.'), 'warning');
     return '';
   }
 
@@ -614,17 +619,17 @@ function l10n_community_project_releases_table($releases, $project_uri, $project
  */
 function l10n_community_project_release($uri = NULL, $rid = NULL) {
   if (!isset($uri) || !isset($rid)) {
-    drupal_set_message(t('No project or release selected.'), 'error');
+    backdrop_set_message(t('No project or release selected.'), 'error');
     return '';
   }
   $project = l10n_server_get_projects(array('uri' => $uri));
   $releases = l10n_server_get_releases($uri);
   if (empty($releases) || !isset($releases[$rid])) {
-    drupal_set_message(t('The requested release could not be found.'), 'error');
+    backdrop_set_message(t('The requested release could not be found.'), 'error');
     return '';
   }
   $release = $releases[$rid];
-  drupal_set_title(t('@project @release information', array(
+  backdrop_set_title(t('@project @release information', array(
     '@project' => $project->title,
     '@release' => $release->title,
   )), PASS_THROUGH);
@@ -930,16 +935,21 @@ function l10n_community_projects_release_reset($form, &$form_state, $langcode, $
       return confirm_form($form, $question, 'translate/languages/' . $langcode . '/translate', $description);
     }
     else {
-      drupal_set_message(t('The release is not found, or the selected %release release does not belongs to the %project project.', array(
+      backdrop_set_message(t('The release is not found, or the selected %release release does not belongs to the %project project.', array(
         '%project' => $form_state['values']['project']->title,
         '%release' => $form_state['values']['release']->title,
       )), 'error');
-      drupal_goto('translate/languages/' . $langcode . '/translate');
+      backdrop_goto('translate/languages/' . $langcode . '/translate');
     }
   }
   else {
-    drupal_set_message(t('Please, contact your localization team manager (or any other translation community manager) with their personal contact form to solve this problem.'));
-    drupal_goto('translate/languages/' . $langcode . '/translate', 'project=' . $project_uri . '&release=' . $release_rid);
+    backdrop_set_message(t('Please, contact your localization team manager (or any other translation community manager) with their personal contact form to solve this problem.'));
+    backdrop_goto('translate/languages/' . $langcode . '/translate', array(
+      'query' => array(  
+        'project' => $project_uri,
+        'release=' => $release_rid,
+      ),
+    ));
   }
 }
 
@@ -952,13 +962,13 @@ function l10n_community_projects_release_reset_submit($form, &$form_state) {
   if (isset($releases[$form_state['values']['release']->rid])) {
     module_load_include('inc', 'l10n_server', 'l10n_server.projects');
     l10n_server_delete_release($form_state['values']['release']->rid, TRUE);
-    drupal_set_message(t('Release data for %project %release was deleted from the Localization server.', array(
+    backdrop_set_message(t('Release data for %project %release was deleted from the Localization server.', array(
       '%project' => $project->title,
       '%release' => $form_state['values']['release']->title,
     )));
   }
   else {
-    drupal_set_message(t('The release is not found, or the selected %release release does not belongs to the %project project.', array(
+    backdrop_set_message(t('The release is not found, or the selected %release release does not belongs to the %project project.', array(
       '%project' => $form_state['values']['project']->title,
       '%release' => $form_state['values']['release']->title,
     )), 'error');

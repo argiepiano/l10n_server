@@ -19,13 +19,13 @@
     return str;
   };
 
-  // Add behaviors to placeholders so that they highlight the corrsponding
+  // Add behaviors to placeholders so that they highlight the corresponding
   // placeholder(s) with the same name on the same table row.
   $('em.l10n-placeholder')
-    .live('mouseover', function() {
+    .on('mouseover', function() {
       $(this).closest('tr').find('.l10n-placeholder:contains("' + $(this).text() + '")').addClass('highlight');
     })
-    .live('mouseout', function() {
+    .on('mouseout', function() {
       $('.l10n-placeholder.highlight').removeClass('highlight');
     });
 
@@ -35,16 +35,16 @@
     $('.l10n-usage .l10n-more-link').click(function() {
       if ($(this).siblings('.l10n-more-info').css('display') == 'none') {
         // Was shown before but is currently hidden.
-        $(this).html(Drupal.t('Hide related projects')).siblings('.l10n-more-info').toggle();
+        $(this).html(Backdrop.t('Hide related projects')).siblings('.l10n-more-info').toggle();
       }
       else if ($(this).siblings('.l10n-more-info').html()) {
         // Is shown and needs to be hidden.
-        $(this).html(Drupal.t('Show related projects')).siblings('.l10n-more-info').toggle();
+        $(this).html(Backdrop.t('Show related projects')).siblings('.l10n-more-info').toggle();
       }
       else {
         // Was not yet loaded, we want to load the information fresh from the server.
         // Append /1 to the href, telling the server we want AHAH targeted output.
-        $(this).html(Drupal.t('Loading...')).siblings('.l10n-more-info').load(this.href + '/1', function(){$(this).siblings('.l10n-more-link').html(Drupal.t('Hide related projects'));});
+        $(this).html(Backdrop.t('Loading...')).siblings('.l10n-more-info').load(this.href + '/1', function(){$(this).siblings('.l10n-more-link').html(Backdrop.t('Hide related projects'));});
       }
       // Prevent the actual link click from happening.
       return false;
@@ -55,7 +55,7 @@
       if (!$(this).siblings('.l10n-more-info').html()) {
         // Was not yet loaded, we want to load the information fresh from the server.
         // Append /1 to the href, telling the server we want AHAH targeted output.
-        $(this).html(Drupal.t('Loading...')).siblings('.l10n-more-info').load(this.href + '/1', function(){$(this).siblings('.l10n-more-link').hide();});
+        $(this).html(Backdrop.t('Loading...')).siblings('.l10n-more-info').load(this.href + '/1', function(){$(this).siblings('.l10n-more-link').hide();});
       }
       // Prevent the actual link click from happening.
       return false;
@@ -72,12 +72,12 @@
 
     // If we did hide items, add a link to show all.
     if ($filterForm.find('.filter-widget:hidden')) {
-      $filterForm.find('.filter-submit').append('<a href="#" class="reveal-link">' + Drupal.t('Reveal more filters') + '</a>');
+      $filterForm.find('.filter-submit').append('<a href="#" class="reveal-link">' + Backdrop.t('Reveal more filters') + '</a>');
       $filterForm.find('.reveal-link').click(showAllFilters);
     }
 
      // Add title to all decline buttons. Will be modified dynamically.
-     $('.actions .declined label').attr('title', Drupal.t('Decline'));
+     $('.actions .declined label').prop('title', Backdrop.t('Decline'));
 
     var markup = function(string) {
       // Highlight placeholders with the l10n-placeholder class.
@@ -117,10 +117,10 @@
 
       // Method to set status classes based on associated checkbox value.
       var setStatus = function(elem, status, value) {
-        var newValue = elem.find('.' + status + ' :checkbox').attr('checked', value).attr('checked');
+        var newValue = elem.find('.' + status + ' :checkbox').prop('checked', value).prop('checked');
         elem[(newValue === undefined ? value : newValue) ? 'addClass' : 'removeClass']('is-' + status);
         if (status == 'declined') {
-          elem.find('li.declined label').attr('title', value ? Drupal.t('Undo decline') : Drupal.t('Decline'));
+          elem.find('li.declined label').prop('title', value ? Backdrop.t('Undo decline') : Backdrop.t('Decline'));
         }
       };
 
@@ -133,7 +133,7 @@
         textareas.each(function(i) {
           var textarea = $(this);
           var val = textarea.val();
-          if (confirmed || val === textarea.attr('defaultValue') || !val || (confirmed === undefined && (confirmed = confirm(Drupal.t("Do you want to overwrite the current suggestion?"))))) {
+          if (confirmed || val === textarea.prop('defaultValue') || !val || (confirmed === undefined && (confirmed = confirm(Backdrop.t("Do you want to overwrite the current suggestion?"))))) {
             // If not the default value, and still editing that means there was something
             // added into the field without it being saved first, and is being edited again.
             textarea.val(translation.find('.l10n-string > span:eq('+ i +')').text()).keyup();
@@ -206,7 +206,7 @@
           translation.find('> .selector').click(function() {
             textareas.each(function() {
               var textarea = $(this);
-              if (textarea.val() === '' || textarea.val() === textarea.attr('defaultValue')) {
+              if (textarea.val() === '' || textarea.val() === textarea.prop('defaultValue')) {
                 textarea.focus();
                 // Stop checking the other ones.
                 return false;
@@ -248,7 +248,7 @@
                 translation.addClass('focused');
                 clearTimeout(blurTimeout);
                 // Empty textarea when focused.
-                if (textarea.val() === textarea.attr('defaultValue')) {
+                if (textarea.val() === textarea.prop('defaultValue')) {
                   textarea.val('');
                 }
               })
@@ -257,7 +257,7 @@
                   translation.removeClass('focused');
                   // Add back default value if user moved out and kept the original text.
                   if (textarea.val() === '') {
-                    textarea.val(textarea.attr('defaultValue'));
+                    textarea.val(textarea.prop('defaultValue'));
                   }
                   translation[hasContent() ? 'addClass' : 'removeClass']('has-content');
                 }, 1000);

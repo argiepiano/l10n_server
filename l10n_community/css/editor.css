@@ -121,13 +121,13 @@ td li.translation > .selector {
     top: 1px;
   }
   .l10n-table ul.actions li.declined label {
-    background: url(images/decline.png) no-repeat right top; /* LTR */
+    background: url(../images/decline.png) no-repeat right top; /* LTR */
   }
   .l10n-table ul.actions li.edit label {
-    background: url(images/edit.png) no-repeat right top; /* LTR */
+    background: url(../images/edit.png) no-repeat right top; /* LTR */
   }
   li.translation.is-declined > .actions li.declined label {
-    background-image: url(images/undecline.png); /* LTR */
+    background-image: url(../images/undecline.png); /* LTR */
   }
   li.translation:hover > .actions li label {
     opacity: 1;

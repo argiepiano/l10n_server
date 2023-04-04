@@ -1,5 +1,4 @@
 <?php
-
 /**
  * @file
  *   Translation view and editing pages for localization community.
@@ -204,7 +203,7 @@ function l10n_community_filter_form($form, &$form_state, $langcode, $filters) {
   $form['limit'] = array(
     '#type' => 'select',
     '#title' => t('Limit'),
-    '#options' => drupal_map_assoc(array(5, 10, 20, 30, 50)),
+    '#options' => backdrop_map_assoc(array(5, 10, 20, 30, 50)),
     '#default_value' => $form_state['values']['limit'],
     '#attributes' => array('class' => array($class_is_default_limit)),
     '#display_none' => $form_state['values']['limit'] == 10,
@@ -273,10 +272,10 @@ function l10n_community_filter_form_submit($form, &$form_state) {
  * @return array
  */
 function l10n_community_translate_page($langcode) {
-  drupal_add_css(drupal_get_path('module', 'l10n_community') . '/editor.css');
-  drupal_add_js(drupal_get_path('module', 'l10n_community') . '/jquery.worddiff.js');
-  drupal_add_js(drupal_get_path('module', 'l10n_community') . '/editor.js');
-  drupal_add_js(drupal_get_path('module', 'l10n_community') . '/l10n_community.js');
+  backdrop_add_css(backdrop_get_path('module', 'l10n_community') . '/css/editor.css');
+  backdrop_add_js(backdrop_get_path('module', 'l10n_community') . '/js/jquery.worddiff.js');
+  backdrop_add_js(backdrop_get_path('module', 'l10n_community') . '/js/editor.js');
+  backdrop_add_js(backdrop_get_path('module', 'l10n_community') . '/js/l10n_community.js');
 
   $language = l10n_community_get_language($langcode);
   $filters = l10n_community_build_filter_values($_GET);
@@ -284,22 +283,22 @@ function l10n_community_translate_page($langcode) {
 
   // Add RTL style if the current language's direction is RTL
   if ($language->direction == LANGUAGE_RTL) {
-    drupal_add_css(drupal_get_path('module', 'l10n_community') . '/editor-rtl.css');
+    backdrop_add_css(backdrop_get_path('module', 'l10n_community') . '/css/editor-rtl.css');
   }
 
   // Set the most appropriate title.
   if ($filters['project']) {
-    drupal_set_title(t('Translate %project to @language', array(
+    backdrop_set_title(t('Translate %project to @language', array(
       '%project' => $filters['project']->title,
       '@language' => t($language->name),
     )), PASS_THROUGH);
   }
   else {
-    drupal_set_title(t('Translate to @language', array('@language' => t($language->name))), PASS_THROUGH);
+    backdrop_set_title(t('Translate to @language', array('@language' => t($language->name))), PASS_THROUGH);
   }
 
   // Add missing breadcrumb.
-  drupal_set_breadcrumb(
+  backdrop_set_breadcrumb(
     array(
       l(t('Home'), NULL),
       l(t('Translate'), 'translate'),
@@ -309,10 +308,10 @@ function l10n_community_translate_page($langcode) {
   );
 
   // Add the filter form.
-  $output['filter'] = drupal_get_form('l10n_community_filter_form', $langcode, $filters);
+  $output['filter'] = backdrop_get_form('l10n_community_filter_form', $langcode, $filters);
   // Output the strings form.
   $max_limit = max($output['filter']['limit']['#options']);
-  $output['result'] = drupal_get_form('l10n_community_translate_form', $language, $filters, $langcode, $max_limit);
+  $output['result'] = backdrop_get_form('l10n_community_translate_form', $language, $filters, $langcode, $max_limit);
   return $output;
 }
 
@@ -339,7 +338,7 @@ function l10n_community_translate_form($form, &$form_state, $language, $filters,
   }
 
   if (!count($strings)) {
-    drupal_set_message(t('No strings found with this filter. Try adjusting the filter options.'));
+    backdrop_set_message(t('No strings found with this filter. Try adjusting the filter options.'));
     return FALSE;
   }
 
@@ -353,7 +352,7 @@ function l10n_community_translate_form($form, &$form_state, $language, $filters,
     ),
     'langcode' => array(
       '#type' => 'value',
-      '#value' => $language->language,
+      '#value' => $language->langcode,
     ),
     'pager_top' => array(
       '#weight' => -10,
@@ -408,7 +407,7 @@ function _l10n_community_translate_form_item(&$form_state, $source, $language, $
 
   $form = array(
     '#string' => $source,
-    '#langcode' => $language->language,
+    '#langcode' => $language->langcode,
     'filters_match' => array(
       '#type' => 'value',
       '#value' => ($source_match = (!empty($filters['search']) && (stripos($source_unpacked, $filters['search']) !== FALSE))),
@@ -433,7 +432,7 @@ function _l10n_community_translate_form_item(&$form_state, $source, $language, $
   // When there are suggestions, load them from the database.
   if ($source->has_suggestion) {
     $result = db_query("SELECT t.tid, t.sid, t.translation, t.uid_entered, t.time_entered, t.time_changed, t.is_active, t.is_suggestion, u.name as username FROM {l10n_server_translation} t LEFT JOIN {users} u ON u.uid = t.uid_entered WHERE t.language = :language AND t.sid = :sid AND t.is_active = 1 AND t.is_suggestion = 1 ORDER BY t.time_entered", array(
-      ':language' => $language->language,
+      ':language' => $language->langcode,
       ':sid' => $source->sid,
     ));
     foreach ($result as $suggestion) {
@@ -445,7 +444,8 @@ function _l10n_community_translate_form_item(&$form_state, $source, $language, $
 
   // If the user may add new suggestions, display a textarea.
   if (l10n_community_access('submit suggestions')) {
-    $textarea = _l10n_community_translate_translation_textarea($source, $language->plurals);
+    $locale_plurals = state_get('locale_translation_plurals');
+    $textarea = _l10n_community_translate_translation_textarea($source, $locale_plurals[$language->langcode]['plurals']);
     $form[$textarea->tid] = _l10n_community_translate_translation($form_state, $textarea, $source, $filters, $source_match);
   }
   return $form;
@@ -706,7 +706,7 @@ function theme_l10n_community_translate_table($variables) {
 function theme_l10n_community_translate_source($variables) {
   $element = $variables['element'];
   $output = theme('l10n_community_translate_actions', array('element' => $element['source']));
-  $output .= '<label class="l10n-string' . ($element['filters_match']['#value'] ? ' filter-match' : ' filter-no-match') . '">' . drupal_render($element['source']['string']) . '</label>';
+  $output .= '<label class="l10n-string' . ($element['filters_match']['#value'] ? ' filter-match' : ' filter-no-match') . '">' . backdrop_render($element['source']['string']) . '</label>';
   $output .= theme('l10n_community_in_context', array('source' => $element['#string']));
 
   $output .= '<div class="l10n-usage"><a href="' . url('translate/source-details/' . $element['#string']->sid) . '" class="l10n-more-link" title="' . t('Show list of projects and releases where this text is used.') . '">' . t('Show related projects') . '</a><div class="l10n-more-info"></div></div>';
@@ -721,7 +721,7 @@ function theme_l10n_community_translate_actions($variables) {
   $actions = '';
   foreach (array('declined', 'edit') as $type) {
     if (isset($element[$type])) {
-      $actions .= '<li class="' . $type . '">' . drupal_render($element[$type]) . '</li>';
+      $actions .= '<li class="' . $type . '">' . backdrop_render($element[$type]) . '</li>';
     }
   }
   if (!empty($actions)) {
@@ -783,17 +783,17 @@ function theme_l10n_community_translate_translation($variables) {
       }
   }
 
-  $output = '<li' . drupal_attributes($element['#attributes']) . '>';
+  $output = '<li' . backdrop_attributes($element['#attributes']) . '>';
   $output .= theme('l10n_community_translate_actions', array('element' => $element));
   // Add the radio box to pick the active translation.
-  $output .= drupal_render($element['active']);
+  $output .= backdrop_render($element['active']);
 
   if (isset($element['author'])) {
-    $output .= '<div class="author">' . drupal_render($element['author']) . '</div>';
+    $output .= '<div class="author">' . backdrop_render($element['author']) . '</div>';
   }
 
   if (isset($element['value'])) {
-    $output .= drupal_render($element['value']);
+    $output .= backdrop_render($element['value']);
   }
   return $output . '</li>';
 }
@@ -809,7 +809,7 @@ function theme_l10n_community_translate_radio($variables) {
   $output .= 'name="' . $element['#name'] . '" ';
   $output .= 'value="' . $element['#return_value'] . '" ';
   $output .= (check_plain($element['#value']) == $element['#return_value']) ? ' checked="checked" ' : ' ';
-  $output .= drupal_attributes($element['#attributes']) . ' />';
+  $output .= backdrop_attributes($element['#attributes']) . ' />';
 
   if (isset($element['#title'])) {
     $output .= '<label class="l10n-string" for="' . $element['#id'] . '">' . $element['#title'] . '</label>';
@@ -825,7 +825,7 @@ function theme_l10n_community_translate_translation_list($variables) {
   $output = '<ul>';
   foreach (element_children($element) as $child) {
     if (is_numeric($child) || $child == 'new') {
-      $output .= drupal_render($element[$child]);
+      $output .= backdrop_render($element[$child]);
     }
   }
   $output .= '</ul>';
@@ -1240,7 +1240,7 @@ function l10n_community_string_details($sid = 0, $ajax = 0) {
   $usage_list = theme('item_list', array('items' => $project_list));
   if ($ajax) {
     print $usage_list;
-    drupal_exit();
+    backdrop_exit();
   }
   else {
     $output .= $usage_list;

@@ -47,7 +47,7 @@ function l10n_gettext_upload_handler($form, $form_state) {
     // Do the actual parsing on the local file.
     if (l10n_server_parse_po($file, 'l10n_gettext_store_string', array($project->pid, $release->rid, $fid))) {
       $sid_count = l10n_gettext_store_string();
-      drupal_set_message(format_plural($sid_count, 'The source file was successfully imported. One source string was added.', 'The source file was successfully imported. @count source strings were added.'));
+      backdrop_set_message(format_plural($sid_count, 'The source file was successfully imported. One source string was added.', 'The source file was successfully imported. @count source strings were added.'));
       db_update('l10n_server_release')
 	->fields(array('sid_count' => $sid_count))
 	->condition('rid', $release->rid)
@@ -61,7 +61,7 @@ function l10n_gettext_upload_handler($form, $form_state) {
       ->execute();
   }
   else {
-    drupal_set_message(t('File to import not found. Did you choose a file to upload which was under %maxsize?', array('%maxsize' => format_size(file_upload_max_size()))), 'error');
+    backdrop_set_message(t('File to import not found. Did you choose a file to upload which was under %maxsize?', array('%maxsize' => format_size(file_upload_max_size()))), 'error');
   }
 }
 
@@ -76,7 +76,7 @@ function l10n_gettext_store_string($value = NULL, $pid = NULL, $rid = NULL, $fid
     $context = !empty($value['msgctxt']) ? $value['msgctxt'] : '';
 
     // A \0 separator in the string means we deal with a string with plural variants.
-    // Unlike Drupal core, we store all in the same string, as it is easier
+    // Unlike Backdrop core, we store all in the same string, as it is easier
     // to handle later, and we don't need the individual string parts.
     $msgid = is_array($value['msgid']) ? join("\0", $value['msgid']) : $value['msgid'];
 

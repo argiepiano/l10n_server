@@ -105,7 +105,7 @@ function l10n_community_menu() {
   $items['admin/l10n_server/l10n_community'] = array(
     'title' => 'User interface',
     'description' => 'Set up general settings for the localization community UI.',
-    'page callback' => 'drupal_get_form',
+    'page callback' => 'backdrop_get_form',
     'page arguments' => array('l10n_community_settings_form'),
     'access arguments' => array('administer localization server'),
     'file' => 'l10n_community.admin.inc',
@@ -258,7 +258,7 @@ function l10n_community_menu() {
   $items['translate/languages/%l10n_community_language/translate/reset/%/%'] = array(
     'load arguments' => array('%map'),
     'title' => 'Reset release',
-    'page callback' => 'drupal_get_form',
+    'page callback' => 'backdrop_get_form',
     'page arguments' => array('l10n_community_projects_release_reset', 2, 5, 6),
     'file' => 'pages.inc',
     'access arguments' => array('browse translations'),
@@ -269,14 +269,37 @@ function l10n_community_menu() {
 }
 
 /**
+ * Implements hook_config_info().
+ */
+function l10n_community_config_info() {
+  $prefixes['l10n_community.settings'] = array(
+    'label' => t('Localization community UI settings'),
+    'group' => t('Localization community'),
+  );
+  return $prefixes;
+}
+
+/**
+ * Implements hook_autoload_info().
+ */
+function l10n_community_autoload_info() {
+  return array(
+    'L10nServerTestCase' => 'tests/l10n_community.test',
+  );
+}
+
+/**
  * Menu loader function for %l10n_community_language to validate language code.
  *
  * @param $langcode
  * @return bool
  */
 function l10n_community_language_load($langcode) {
-  if (($languages = l10n_community_get_languages()) && isset($languages[$langcode]) && !empty($languages[$langcode]->plurals)) {
-    return $langcode;
+  if (($languages = l10n_community_get_languages()) && isset($languages[$langcode])) {
+    $locale_plurals = state_get('locale_translation_plurals', array());
+    if (!empty($locale_plurals[$langcode]['plurals'])) {
+      return $langcode;
+    }
   }
   return FALSE;
 }
@@ -332,19 +355,19 @@ function l10n_community_access_warnings($uri) {
  */
 function l10n_community_init() {
   if (arg(0) == 'translate') {
-    drupal_add_css(drupal_get_path('module', 'l10n_community') . '/l10n_community.css');
+    backdrop_add_css(backdrop_get_path('module', 'l10n_community') . '/css/l10n_community.css');
     // For the translation overview pages. This is used to present admin page like panels.
-    drupal_add_css(drupal_get_path('module', 'system') . '/admin.css');
+    // backdrop_add_css(backdrop_get_path('module', 'system') . '/admin.css');
   }
 
   // Check if language is RTL
-  if (array_key_exists(arg(2), locale_language_list())) {
+  if (array_key_exists(arg(2), language_list())) {
     $langcode = arg(2);
     $language = l10n_community_get_language($langcode);
 
     // Add RTL style if the current language's direction is RTL
     if ($language->direction == LANGUAGE_RTL) {
-      drupal_add_css(drupal_get_path('module', 'l10n_community') . '/l10n_community-rtl.css');
+      backdrop_add_css(backdrop_get_path('module', 'l10n_community') . '/css/l10n_community-rtl.css');
     }
   }
 }
@@ -400,15 +423,15 @@ function l10n_community_block_info() {
   $blocks = array(
     'stats' => array(
       'info' => t('Localization server statistics'),
-      'cache' => DRUPAL_NO_CACHE,
+      'cache' => BACKDROP_NO_CACHE,
     ),
     'jump' => array(
       'info' => t('Localization server jump form'),
-      'cache' => DRUPAL_NO_CACHE,
+      'cache' => BACKDROP_NO_CACHE,
     ),
     'contributors' => array(
       'info' => t('Localization server contributors'),
-      'cache' => DRUPAL_NO_CACHE,
+      'cache' => BACKDROP_NO_CACHE,
     ),
   );
   return $blocks;
@@ -439,7 +462,7 @@ function l10n_community_block_view($delta) {
             return l10n_community_block_stats_language($languages[$arg2]);
           }
         }
-        if (drupal_is_front_page()) {
+        if (backdrop_is_front_page()) {
           return l10n_community_block_stats_front();
         }
       }
@@ -448,11 +471,11 @@ function l10n_community_block_view($delta) {
     case 'jump':
       if (user_access('access localization community')) {
         $arg1 = arg(1);
-        if ((arg(0) == 'translate' && (empty($arg1) || ($arg1 == 'downloads'))) || drupal_is_front_page()) {
+        if ((arg(0) == 'translate' && (empty($arg1) || ($arg1 == 'downloads'))) || backdrop_is_front_page()) {
           module_load_include('inc', 'l10n_community', 'welcome');
           return array(
             'subject' => t('Quick navigation'),
-            'content' => drupal_get_form('l10n_community_pick_go'),
+            'content' => backdrop_get_form('l10n_community_pick_go'),
           );
         }
       }
@@ -541,18 +564,19 @@ function l10n_community_get_languages($key = NULL) {
   static $languages = NULL;
 
   if (!isset($languages)) {
-    $result = db_query("SELECT * FROM {languages} WHERE language <> 'en' ORDER BY name");
     $languages = array();
-    foreach ($result as $language) {
-      $languages[$language->language] = $language;
+    $language_list = language_list();
+    unset($language_list['en']);
+    foreach ($language_list as $langcode => $language) {
+      $languages[$language->langcode] = $language;
     }
   }
 
   if (isset($key)) {
     // Build list of values with the specific key, if asked.
     $result = array();
-    foreach ($languages as $language) {
-      $result[$language->language] = $language->$key;
+    foreach ($language_list as $language) {
+      $result[$language->langcode] = $language->$key;
     }
     return $result;
   }
@@ -675,7 +699,7 @@ function l10n_community_update_message() {
   }
 
   if ($messages) {
-    drupal_set_message(implode(', ', $messages));
+    backdrop_set_message(implode(', ', $messages));
   }
 }
 
@@ -693,8 +717,8 @@ function l10n_community_projects_autocomplete($string = '') {
       $matches[$project->title] = check_plain($project->title);
     }
   }
-  print drupal_json_encode($matches);
-  drupal_exit();
+  print backdrop_json_encode($matches);
+  backdrop_exit();
 }
 
 /**
@@ -835,12 +859,13 @@ function l10n_community_get_stats($langcode = NULL) {
  * Clear project and language stats every hour.
  */
 function l10n_community_cron() {
-  $lastrun = variable_get('l10n_cron_stats', 1);
+  $lastrun = config_get('l10n_community.settings', 'l10n_cron_stats');
+  $lastrun = empty($lastrun) ? 1 : $lastrun;
   if (($_SERVER['REQUEST_TIME'] - $lastrun) > 3600) {
     watchdog('l10n_community', 'Rebuilding community statistics (this may take a long time)');
     l10n_community_cache_clear_all();
     l10n_community_rebuild_stats();
-    variable_set('l10n_cron_stats', $_SERVER['REQUEST_TIME']);
+    config_set('l10n_community.settings', 'l10n_cron_stats', $_SERVER['REQUEST_TIME']);
   }
 }
 
@@ -869,7 +894,8 @@ function l10n_community_rebuild_stats() {
  * Load and return the highlighted project if set and found.
  */
 function l10n_community_get_highlighted_project() {
-  if ($highlight_project = variable_get('l10n_community_highlighted_project', '')) {
+  $highlight_project = config_get('l10n_community.settings', 'l10n_community_highlighted_project');
+  if ($highlight_project) {
     $result = db_query(
       "SELECT * FROM {l10n_server_project} WHERE title = :title",
       array(':title' => $highlight_project)
@@ -975,7 +1001,7 @@ function l10n_community_add_url_modifiers($langcode, $filters) {
   foreach ($urls as $url) {
     $replacements[url($url)] = url($url, array('query' => $filters));
   }
-  drupal_add_js(array('l10nServerURLs' => $replacements), array('type' => 'setting'));
+  backdrop_add_js(array('l10nServerURLs' => $replacements), array('type' => 'setting'));
 }
 
 // = AJAX callbacks ============================================================

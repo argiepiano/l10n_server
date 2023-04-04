@@ -48,11 +48,11 @@ function l10n_remote_user_page($client_token) {
   global $user;
 
   if (!$user->uid) {
-    drupal_set_message(t('Please log in first to generate your Localization Server API key.'), 'error');
+    backdrop_set_message(t('Please log in first to generate your Localization Server API key.'), 'error');
     return '';
   }
   elseif (!user_access('submit suggestions remotely', $user)) {
-    drupal_set_message(t("You don't have the required permissions to use remote submission on this Localization Server."), 'error');
+    backdrop_set_message(t("You don't have the required permissions to use remote submission on this Localization Server."), 'error');
     return '';
   }
 
@@ -62,7 +62,7 @@ function l10n_remote_user_page($client_token) {
     '#markup' => l10n_remote_user_api_key($user->uid, $client_token),
     '#description' => t('Copy and paste this API key into your user account on the client host.'),
   );
-  return drupal_render($items);
+  return backdrop_render($items);
 }
 
 /**
@@ -71,7 +71,7 @@ function l10n_remote_user_page($client_token) {
  * This API key will contain a visible user id and a signature from the server.
  */
 function l10n_remote_user_api_key($uid, $client_token) {
-  return $uid . ':' . md5('l10n_community' . $uid . drupal_get_private_key() . $client_token);
+  return $uid . ':' . md5('l10n_community' . $uid . backdrop_get_private_key() . $client_token);
 }
 
 /**
@@ -112,7 +112,7 @@ function l10n_remote_xmlrpc_status($version) {
     'supported' => $version == '2.0',
     'languages' => implode(', ', array_keys(l10n_community_get_languages())),
     // Website data.
-    'name' => variable_get('site_name', 'Drupal'),
+    'name' => config_get('system.core', 'site_name'),
   );
 }
 

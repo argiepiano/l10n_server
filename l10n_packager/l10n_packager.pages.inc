@@ -9,11 +9,11 @@
  * Menu callback, search for project, and show its translation downloads.
  */
 function l10n_packager_explore_downloads() {
-  drupal_add_css(drupal_get_path('module', 'l10n_packager') . '/l10n_packager.css');
-  drupal_add_css(drupal_get_path('module', 'l10n_community') . '/l10n_community.css');
+  backdrop_add_css(backdrop_get_path('module', 'l10n_packager') . '/l10n_packager.css');
+  backdrop_add_css(backdrop_get_path('module', 'l10n_community') . '/l10n_community.css');
 
   $projects = l10n_server_get_projects();
-  $form = drupal_get_form('l10n_packager_download_project_form', $projects);
+  $form = backdrop_get_form('l10n_packager_download_project_form', $projects);
 
   if (empty($_GET['project']) && module_exists('l10n_community')) {
     $project = l10n_community_get_highlighted_project();
@@ -29,15 +29,15 @@ function l10n_packager_explore_downloads() {
   }
   if (empty($project)) {
     if (!empty($_GET['project'])) {
-      drupal_set_message(t('Requested project not found.'), 'warning');
+      backdrop_set_message(t('Requested project not found.'), 'warning');
     }
     return $form;
   }
 
   // Set proper title for given project.
-  drupal_set_title(t('@project translation downloads', array('@project' => $project->title)), PASS_THROUGH);
+  backdrop_set_title(t('@project translation downloads', array('@project' => $project->title)), PASS_THROUGH);
 
-  $output = drupal_render($form);
+  $output = backdrop_render($form);
   // Expire old entries and then try to look up our entry.
   cache_clear_all(NULL, 'cache_l10n_packager');
   $rendered = cache_get('download:' . $project->uri, 'cache_l10n_packager');
@@ -61,8 +61,8 @@ function l10n_packager_explore_downloads() {
 function l10n_packager_download_project_form($form, &$form_state, $projects) {
   if (empty($form_state['values'])) {
     $form_state['values'] = array(
-      // @todo: bad, bad hardcoding of Drupal as project.
-      'project' => (isset($_GET['project']) && isset($projects[$_GET['project']]) ? $projects[$_GET['project']]->title : 'Drupal core'),
+      // @todo: bad, bad hardcoding of Backdrop as project.
+      'project' => (isset($_GET['project']) && isset($projects[$_GET['project']]) ? $projects[$_GET['project']]->title : 'Backdrop core'),
     );
   }
   $form['project'] = array(
@@ -110,7 +110,7 @@ function l10n_packager_download_project_form_validate($form, &$form_state) {
  * Form submission.
  */
 function l10n_packager_download_project_form_submit($form, $form_state) {
-  drupal_goto('translate/downloads', array('query' => array('project' =>  $form_state['values']['uri'])));
+  backdrop_goto('translate/downloads', array('query' => array('project' =>  $form_state['values']['uri'])));
 }
 
 /**

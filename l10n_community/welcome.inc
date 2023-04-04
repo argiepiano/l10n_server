@@ -13,7 +13,10 @@
  * fit perfectly with all listings, so I bended some stuff more to comply.
  */
 function l10n_community_welcome_page() {
-  if (!variable_get('l10n_community_stats_enabled', TRUE)) {
+  $config = config('l10n_community.settings');
+  $community_stats_enabled = $config->get('l10n_community_stats_enabled');
+  $community_stats_enabled = is_null($community_stats_enabled) ? TRUE : $community_stats_enabled;
+  if (!$community_stats_enabled) {
     return t('Statistics for projects have been disabled.');
   }
   elseif ($project = l10n_community_get_highlighted_project()) {
@@ -21,12 +24,14 @@ function l10n_community_welcome_page() {
     // Similar to l10n_community_language_progress_for_project() with simpler
     // output more suitable for a welcoming overview.
     module_load_include('inc', 'l10n_community', 'pages');
-    drupal_set_title(t('Translations'));
+    backdrop_set_title(t('Translations'));
 
     $languages = l10n_community_get_languages();
 
     // Check for l10n_packager, for faster queries but only on latest release
-    if (module_exists('l10n_packager') && variable_get('l10n_community_package_count', TRUE)) {
+    $community_package_count = $config->get('l10n_community_package_count');
+    $community_package_count = is_null($community_package_count) ? TRUE : $community_package_count;
+    if (module_exists('l10n_packager') && $community_package_count) {
       list($num_source, $string_counts) = l10n_community_get_l10n_packager_string_count($project->pid);
     }
     else {
@@ -35,8 +40,9 @@ function l10n_community_welcome_page() {
     }
 
     $table_rows = array();
+    $locale_plurals = state_get('locale_translation_plurals', array());
     foreach ($languages as $langcode => $language) {
-      if (empty($language->plurals)) {
+      if (empty($locale_plurals[$language->langcode]['plurals'])) {
         $table_rows[] = array(
           array(
             'data' => t($language->name),
@@ -44,7 +50,7 @@ function l10n_community_welcome_page() {
             'class' => array('rowhead'),
           ),
           array(
-            'data' => t('Uninitialized plural formula. Please set up the plural formula in <a href="@language-config">the langauge configuration</a> or alternatively <a href="@import-url">import a valid interface translation</a> for Drupal in this language.', array(
+            'data' => t('Uninitialized plural formula. Please set up the plural formula in <a href="@language-config">the langauge configuration</a> or alternatively <a href="@import-url">import a valid interface translation</a> for Backdrop in this language.', array(
               '@import-url' => url('admin/structure/translate/import'),
               '@language-config' => url('admin/config/language'),
             )),
@@ -142,8 +148,9 @@ function l10n_community_pick_go($form, &$form_state) {
 
   // Drop languages without a plural formula from the options.
   $language_list = array();
+  $locale_plurals = state_get('locale_translation_plurals', array());
   foreach ($languages as $langcode => $language) {
-    if (!empty($language->plurals)) {
+    if (!empty($locale_plurals[$language->langcode]['plurals'])) {
       $language_list[$langcode] = t($language->name);
     }
   }
@@ -151,7 +158,7 @@ function l10n_community_pick_go($form, &$form_state) {
   if (!count($language_list) || !count($projects)) {
     $pconfig_tip = '';
     if (!module_exists('l10n_pconfig')) {
-      $pconfig_tip = ' ' . t('The <a href="@pconfig">Plural formula configurator</a> module is recommended for plural formula setup.', array('@pconfig' => 'http://drupal.org/project/l10n_pconfig'));
+      $pconfig_tip = ' ' . t('The <a href="@pconfig">Plural formula configurator</a> module is recommended for plural formula setup.', array('@pconfig' => 'http://backdrop.org/project/l10n_pconfig'));
     }
     $form['dummy'] = array(
       '#type' => 'markup',
@@ -189,7 +196,8 @@ function l10n_community_pick_go($form, &$form_state) {
   }
   else {
     // Only one language, store as form value.
-    list($language_code, $language_name) = each($language_list);
+    $language_code = key($language_list);
+    $language_name = current($language_list);
     $form['langcode'] = array(
       '#type' => 'value',
       '#value' => $language_code,
@@ -250,20 +258,20 @@ function l10n_community_pick_go_submit($form, &$form_state) {
     // Project surely selected, possibly with language too.
     if (!empty($form_state['values']['langcode'])) {
       if (l10n_community_access('browse translations')) {
-        drupal_goto('translate/languages/' . $form_state['values']['langcode'] . '/translate', array('query' => array('project' => $uri)));
+        backdrop_goto('translate/languages/' . $form_state['values']['langcode'] . '/translate', array('query' => array('project' => $uri)));
       }
       else {
         // Both language and project set, no access to browse > go to project.
-        drupal_goto('translate/projects/' . $uri);
+        backdrop_goto('translate/projects/' . $uri);
       }
     }
     else {
       // Only project set.
-      drupal_goto('translate/projects/' . $uri);
+      backdrop_goto('translate/projects/' . $uri);
     }
   }
   elseif (!empty($form_state['values']['langcode'])) {
     // Only language set.
-    drupal_goto('translate/languages/' . $form_state['values']['langcode']);
+    backdrop_goto('translate/languages/' . $form_state['values']['langcode']);
   }
 }

@@ -2,4 +2,5 @@ name = "Localization remote API"
 description = Provides an XML-RPC server interface to handle remote translation submissions.
 dependencies[] = l10n_community
 package = "Localization server"
-core = 7.x
+backdrop = 1.x
+type = module

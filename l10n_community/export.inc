@@ -22,33 +22,33 @@ function l10n_community_export_page($uri = NULL, $langcode = NULL) {
   // browse forms, they can do that without loosing their filters.
   $filters = l10n_community_build_filter_values($_GET);
   l10n_community_add_url_modifiers($langcode, $filters);
-  drupal_add_js(drupal_get_path('module', 'l10n_community') . '/l10n_community.js');
+  backdrop_add_js(backdrop_get_path('module', 'l10n_community') . '/js/l10n_community.js');
 
   // Set a matching title with the translation page.
   if (isset($langcode)) {
     $language = l10n_community_get_language($langcode);
-    drupal_set_title(t('Export @language translations', array('@language' => t($language->name))), PASS_THROUGH);
+    backdrop_set_title(t('Export @language translations', array('@language' => t($language->name))), PASS_THROUGH);
     $breadcrumb[] = l(t('Explore languages'), 'translate/languages');
     $breadcrumb[] = l(t($language->name), 'translate/languages/' . $langcode);
   }
   else {
     $project = l10n_server_get_projects(array('uri' => $uri));
-    drupal_set_title(t('Export @project translation templates', array('@project' => $project->title)), PASS_THROUGH);
+    backdrop_set_title(t('Export @project translation templates', array('@project' => $project->title)), PASS_THROUGH);
     $breadcrumb[] = l(t('Explore projects'), 'translate/projects');
     $breadcrumb[] = l($project->title, 'translate/projects/' . $project->uri);
   }
   // Add missing breadcrumb.
-  drupal_set_breadcrumb($breadcrumb);
+  backdrop_set_breadcrumb($breadcrumb);
 
   if (isset($project)) {
     module_load_include('inc', 'l10n_community', 'pages');
     if (!$num_source = l10n_community_get_string_count('project', $project->pid)) {
-      drupal_set_message(t('No strings found to export in this project yet.'), 'warning');
+      backdrop_set_message(t('No strings found to export in this project yet.'), 'warning');
       return '';
     }
   }
 
-  return drupal_get_form('l10n_community_export_form', $uri, $langcode);
+  return backdrop_get_form('l10n_community_export_form', $uri, $langcode);
 }
 
 /**
@@ -312,7 +312,8 @@ function _l10n_community_export_string_files(&$po_data, $uri, $language, $templa
         // Empty msgstrs based on plural formula for language. Could be
         // a plural without translation or a template generated for a
         // specific language.
-        for ($pi = 0; $pi < $language->plurals; $pi++) {
+        $locale_plurals = state_get('locale_translation_plurals', array());
+        for ($pi = 0; $pi < $locale_plurals[$language->langcode]['plurals']; $pi++) {
           $output .= 'msgstr[' . $pi . '] ""' . "\n";
         }
       }
@@ -397,10 +398,10 @@ function l10n_community_export($uri, $release = NULL, $language = NULL, $templat
     // Improve the query for templates
     $query->leftJoin('l10n_server_status_flag', 'st',
       'st.sid = s.sid AND st.language = :language',
-      array(':language' => $language->language));
+      array(':language' => $language->langcode));
     $query->$translation_join('l10n_server_translation', 't',
       's.sid = t.sid AND t.language = :language AND t.is_active = 1',
-      array(':language' => $language->language));
+      array(':language' => $language->langcode));
     $query
       ->fields('t', array('translation', 'is_suggestion'))
       ->fields('st', array('has_suggestion'))
@@ -482,7 +483,7 @@ function l10n_community_export($uri, $release = NULL, $language = NULL, $templat
       $message = t('There are no strings in any releases of %project to export.', array('%project' => $project->title));
     }
     // Message to the user.
-    drupal_set_message($message);
+    backdrop_set_message($message);
     // Message to watchdog for possible automated packaging.
     watchdog('l10n_community', $message);
     return NULL;
@@ -519,8 +520,9 @@ function l10n_community_export($uri, $release = NULL, $language = NULL, $templat
     $header .= "\"MIME-Version: 1.0\\n\"\n";
     $header .= "\"Content-Type: text/plain; charset=utf-8\\n\"\n";
     $header .= "\"Content-Transfer-Encoding: 8bit\\n\"\n";
-    if ((!empty($language->formula) || $language->formula === "0") && $language->plurals) {
-      $header .= "\"Plural-Forms: nplurals=" . $language->plurals . "; plural=" . strtr($language->formula, array('$' => '')) . ";\\n\"\n";
+    $locale_plurals = state_get('locale_translation_plurals', array());
+    if ((!empty($locale_plurals[$language->langcode]['formula']) || $locale_plurals[$language->langcode]['formula'] === "0") && $locale_plurals[$language->langcode]['plurals']) {
+      $header .= "\"Plural-Forms: nplurals=" . $locale_plurals[$language->langcode]['plurals'] . "; plural=" . strtr($locale_plurals[$language->langcode]['formula'], array('$' => '')) . ";\\n\"\n";
     }
   }
   else {
@@ -538,8 +540,9 @@ function l10n_community_export($uri, $release = NULL, $language = NULL, $templat
     $header .= "\"MIME-Version: 1.0\\n\"\n";
     $header .= "\"Content-Type: text/plain; charset=utf-8\\n\"\n";
     $header .= "\"Content-Transfer-Encoding: 8bit\\n\"\n";
-    if (isset($language) && (!empty($language->formula) || $language->formula === "0") && $language->plurals) {
-      $header .= "\"Plural-Forms: nplurals=" . $language->plurals . "; plural=" . strtr($language->formula, array('$' => '')) . ";\\n\"\n";
+    $locale_plurals = state_get('locale_translation_plurals', array());
+    if (isset($language) && (!empty($locale_plurals[$language->langcode]['formula']) || $locale_plurals[$language->langcode]['formula'] === "0") && $locale_plurals[$language->langcode]['plurals']) {
+      $header .= "\"Plural-Forms: nplurals=" . $locale_plurals[$language->langcode]['plurals'] . "; plural=" . strtr($locale_plurals[$language->langcode]['plurals'], array('$' => '')) . ";\\n\"\n";
     }
     else {
       $header .= "\"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\\n\"\n";
@@ -551,7 +554,7 @@ function l10n_community_export($uri, $release = NULL, $language = NULL, $templat
   fclose($fh);
 
   // Output a single PO(T) file.
-  return array('text/plain', $tempfile, $uri . '-' . (isset($release) ? $release->title : 'all') . (isset($language) ? '.' . $language->language : '') . ($template ? '.pot' : '.po'), $sid_count);
+  return array('text/plain', $tempfile, $uri . '-' . (isset($release) ? $release->title : 'all') . (isset($language) ? '.' . $language->langcode : '') . ($template ? '.pot' : '.po'), $sid_count);
 }
 
 /**

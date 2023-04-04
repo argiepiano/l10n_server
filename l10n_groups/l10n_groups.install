@@ -8,43 +8,36 @@
  * Implements hook_install().
  */
 function l10n_groups_install() {
-  // Set up blocks for this module.
-  $theme_key = variable_get('theme_default', 'bartik');
-  $blocks = array(10 => 'info');
-  $module = 'l10n_groups';
-  foreach ($blocks as $weight => $delta) {
-    // Update all instances of this block even if we just added it.
-    db_merge('block')
-      ->key(array(
-          'module' => $module,
-          'delta'  => $delta,
-        ))
-      ->insertFields(array(
-          'module' => $module,
-          'delta'  => $delta,
-          'cache'  => -1,
-          'status' => 1,
-          'weight' => $weight,
-          'region' => 'sidebar_second',
-          'theme'  => $theme_key,
-          'pages'  => '',
-        ))
-      ->updateFields(array(
-          'cache'  => -1,
-          'status' => 1,
-          'weight' => $weight,
-        ))
-      ->execute();
-  }
+  // Create OG node type for translation groups.
+  $l10n_group_node_type = array(
+    'type' => 'l10n_group',
+    'name' => t('Translation group'),
+    'base' => 'l10n_groups',
+    'description' => t('A language community around Backdrop project translations.'),
+    'custom' => 1,
+    'modified' => 1,
+    'locked' => 0,
+    'is_new' => TRUE,
+    'settings' => array(
+      'promote_enabled' => FALSE,
+    ),
+  );
 
-  // Add a body field.
-  node_types_rebuild();
-  $types = node_type_get_types();
-  node_add_body_field($types['l10n_group']);
+  $l10n_group_node_type = node_type_set_defaults($l10n_group_node_type);
+  node_type_save($l10n_group_node_type);
+  node_add_body_field($l10n_group_node_type);
 
   // Define l10n_group content as groups.
-  variable_set('og_group_type_l10n_group', TRUE);
+  config_set('og.settings', 'og_group_type_l10n_group', TRUE);
   og_create_field(OG_GROUP_FIELD, 'node', 'l10n_group');
+
+  // Enable OG context negotiation and weight for translate_path
+  $negotiation_info = config_get('og_context.settings', 'og_context_negotiation_group_context');
+  $negotiation_info['translate_path'] = array();
+  config_set('og_context.settings', 'og_context_negotiation_group_context', $negotiation_info);
+  $providers_weight = config_get('og_context.settings', 'og_context_providers_weight_group_context');
+  $providers_weight['translate_path'] = 0;
+  config_set('og_context.settings', 'og_context_providers_weight_group_context', $providers_weight);
 }
 
 /**
@@ -82,19 +75,5 @@ function l10n_groups_schema() {
  * Implements hook_update_last_removed().
  */
 function l10n_groups_update_last_removed() {
-  return 6001;
-}
-
-/**
- * Update the 'Localization group information' block.
- */
-function l10n_groups_update_7100() {
-  // Delete the block from the table.
-  db_delete('blocks')
-    ->condition('module', 'l10n_groups')
-    ->condition('delta', 'info')
-    ->condition('theme', 'bluecheese');
-
-  // Flush the cache so that the new block settings are applied.
-  cache_clear_all();
+  return 7100;
 }

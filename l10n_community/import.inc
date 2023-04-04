@@ -13,9 +13,9 @@
  */
 function l10n_community_import_page($langcode) {
   $language = l10n_community_get_language($langcode);
-  drupal_set_title(t('Import to @language', array('@language' => t($language->name))), PASS_THROUGH);
+  backdrop_set_title(t('Import to @language', array('@language' => t($language->name))), PASS_THROUGH);
   // Add missing breadcrumb.
-  drupal_set_breadcrumb(
+  backdrop_set_breadcrumb(
     array(
       l(t('Home'), NULL),
       l(t('Translate'), 'translate'),
@@ -23,7 +23,7 @@ function l10n_community_import_page($langcode) {
       l(t($language->name), 'translate/languages/' . $langcode),
     )
   );
-  return drupal_get_form('l10n_community_import_form', $langcode);
+  return backdrop_get_form('l10n_community_import_form', $langcode);
 }
 
 /**
@@ -46,7 +46,7 @@ function l10n_community_import_form($form, &$form_state, $langcode) {
     '#description' => t('The maximum allowed size for uploads is %maxsize.', array('%maxsize' => format_size(file_upload_max_size()))),
   );
 
-  if (($import_name = variable_get('l10n_community_import_user', '')) && ($import_account = user_load_by_name($import_name))) {
+  if (($import_name = config_get('l10n_community.settings', 'l10n_community_import_user')) && ($import_account = user_load_by_name($import_name))) {
     // If available, let the user import with attribution to a bulk import user.
     $form['import_uid'] = array(
       '#title' => t('Attribute import to'),
@@ -133,13 +133,13 @@ function l10n_community_import_form_submit($form, &$form_state) {
 
     // Do the actual parsing on the local file.
     if (l10n_server_parse_po($file, '_l10n_community_import_one_string', array($form_state['values']['langcode'], $form_state['values']['is_suggestion'], $form_state['values']['import_uid']))) {
-      drupal_set_message(t('The translation was successfully imported.'));
+      backdrop_set_message(t('The translation was successfully imported.'));
       l10n_community_update_message();
       cache_clear_all('l10n:stats:' . $form_state['values']['langcode'], 'cache');
     }
   }
   else {
-    drupal_set_message(t('File to import not found. Did you choose a .po file to upload which was under %maxsize?', array('%maxsize' => format_size(file_upload_max_size()))), 'error');
+    backdrop_set_message(t('File to import not found. Did you choose a .po file to upload which was under %maxsize?', array('%maxsize' => format_size(file_upload_max_size()))), 'error');
   }
 }
 

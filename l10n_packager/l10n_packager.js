@@ -1,5 +1,5 @@
 (function ($) {
-  Drupal.behaviors.l10n_packager_expand = {
+  Backdrop.behaviors.l10n_packager_expand = {
     attach:function (context) {
       l10n_packager_fix_table_classes();
       $('tr.l10n-packager-summary a.expand:not(.l10n-packager-processed)', context)
