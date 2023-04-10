@@ -418,7 +418,7 @@ function l10n_server_update_last_removed() {
  * Move connector variables into config values.
  */
 function l10n_server_update_1000() {
-  $query = db_query("SELECT v.name AS value
+  $query = db_query("SELECT v.name AS name, v.value as value
     FROM 
     {variable} v
     WHERE  (name LIKE 'l10n_server_connector_%')"
@@ -427,7 +427,7 @@ function l10n_server_update_1000() {
   if (!empty($variables)) {
     $config = config('l10n_server.settings');
     foreach ($variables as $variable) {
-      $config->set($variable->name, update_variable_get($variable->name));
+      $config->set($variable->name, update_variable_get($variable->value));
       update_variable_del($variable->name);
     }
     $config->save();
