@@ -8,7 +8,7 @@ collaborate on translating Backdrop projects to different languages. It is
 inspired by Launchpad Rosetta (https://launchpad.net/rosetta) but is highly
 tailored to Backdrop needs.
 
-This module suite powers the base functionality of http://localize.backdrop.org.
+This module suite powers the base functionality of http://localize.backdropcms.org.
 
 The module suite solves the Backdrop project translation problem with a web
 based interface. The various Backdrop projects release source code on a daily
@@ -72,6 +72,18 @@ proper permissions can suggest new translations for strings, maintainers can
 even decide on the official translation based on the different suggestions. To
 translate a project, go to Translations, choose a language and optionally
 choose a project. There you can translate all strings.
+
+## Upgrading from Drupal 7
+
+Before following the directions [outlined here](https://docs.backdropcms.org/documentation/upgrading-from-drupal-7-overview), you'll need to manually the `system` table of your database:
+1. Back up your Drupal 7 database
+2. Using phpMyAdmin or another database UI, edit the table `system`
+3. Find the row with name = `l10n_community`
+4. Manually change the `schema_version` from `6024` to `0`
+
+This is necessary because of the inability of Backdrop to upgrade modules with schema versions smaller than 7000.
+
+Proceed with the upgrade. 
 
 ## Credits
 
