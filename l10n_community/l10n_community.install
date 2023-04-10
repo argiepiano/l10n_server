@@ -4,53 +4,15 @@
  *   Localization community UI installation, update and uninstallation.
  */
 
-/**
- * Implements hook_install().
- */
-function l10n_community_install() {
-  // TODO: insert blocks "stats", "jump" and "contributions" in default layout
-
-  // $theme_key = config_get('system.core', 'theme_default');
-  // // Set up these blocks.
-  // $blocks = array(
-  //   -6 => 'stats',
-  //   -7 => 'jump',
-  //   8 => 'contributions',
-  // );
-  // $module = 'l10n_community';
-  // foreach ($blocks as $weight => $delta) {
-  //   // Insert or update all instances of this block even if we just added it.
-  //   db_merge('block')
-  //     ->key(array(
-  //         'module' => $module,
-  //         'delta'  => $delta,
-  //       ))
-  //     ->insertFields(array(
-  //         'module' => $module,
-  //         'delta'  => $delta,
-  //         'cache'  => -1,
-  //         'status' => 1,
-  //         'weight' => $weight,
-  //         'region' => 'sidebar_second',
-  //         'theme'  => $theme_key,
-  //         'pages'  => '',
-  //       ))
-  //     ->updateFields(array(
-  //         'cache'  => -1,
-  //         'status' => 1,
-  //         'weight' => $weight,
-  //       ))
-  //     ->execute();
-  // }
-  // cache_clear_all();
-}
-
+ function l10n_community_install() {
+  $a = 1;
+ }
 /**
  * Implements hook_update_N().
  * 
  * Move Drupal 7 variables into config. 
  */
-function i10n_community_update_1000() {
+function l10n_community_update_1000() {
   $config = config('l10n_community.settings');
   $config->set('l10n_community_project_per_page', update_variable_get('l10n_community_project_per_page', 10));
   $config->set('l10n_community_stats_enabled', update_variable_get('l10n_community_stats_enabled', TRUE));
