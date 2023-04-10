@@ -4,9 +4,6 @@
  *   Localization community UI installation, update and uninstallation.
  */
 
- function l10n_community_install() {
-  $a = 1;
- }
 /**
  * Implements hook_update_N().
  * 
@@ -29,4 +26,10 @@ function l10n_community_update_1000() {
   update_variable_del('l10n_cron_stats');
   update_variable_del('l10n_community_import_user');
   update_variable_del('l10n_community_highlighted_project');
+
+  // Move the new layout configurations
+  config_install_default_config('l10n_community', 'layout.layout.languages_plus');
+  config_install_default_config('l10n_community', 'layout.layout.languages');
+  config_install_default_config('l10n_community', 'layout.layout.projects');
+  config_install_default_config('l10n_community', 'layout.layout.translate');
 }
