@@ -415,8 +415,21 @@ function l10n_server_update_last_removed() {
 /**
  * Implements hook_update_N().
  * 
- * Move variables into config values.
+ * Move connector variables into config values.
  */
 function l10n_server_update_1000() {
-  // TODO move variables l10n_server_connector_' . $connector . '_' . $source . '_enabled to config.
+  $query = db_query("SELECT v.name AS value
+    FROM 
+    {variable} v
+    WHERE  (name LIKE 'l10n_server_connector_%')"
+  );
+  $variables = $query->fetchAll();
+  if (!empty($variables)) {
+    $config = config('l10n_server.settings');
+    foreach ($variables as $variable) {
+      $config->set($variable->name, update_variable_get($variable->name));
+      update_variable_del($variable->name);
+    }
+    $config->save();
+  }
 }
