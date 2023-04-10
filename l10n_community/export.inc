@@ -464,7 +464,7 @@ function l10n_community_export($uri, $release = NULL, $language = NULL, $templat
     // Uniquely collected, so we use array keys for speed.
     $export_string['comment'][$string->location][$string->lineno] = 1;
     $export_string['revisions'][$string->revision] = 1;
-    if ($string->is_suggestion) {
+    if (isset($string->is_suggestion) && $string->is_suggestion) {
       $export_string['suggestions'][$string->translation] = 1;
     }
   }
