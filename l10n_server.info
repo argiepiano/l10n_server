@@ -5,3 +5,5 @@ package = "Localization server"
 dependencies[] = locale
 dependencies[] = l10n_pconfig
 backdrop = 1.x
+
+stylesheets[all][] = css/l10n_server.css
