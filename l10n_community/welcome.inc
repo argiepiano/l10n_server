@@ -205,26 +205,37 @@ function l10n_community_pick_go($form, &$form_state) {
     $projects_title = t('Pick a project for @language translation', array('@language' => $language_name));
   }
 
-  $form['project'] = array(
-    '#title' => $projects_title,
-    '#description' => t('Alternatively you can <a href="@explore">explore projects</a>.', array('@explore' => url('translate/projects'))),
-    '#default_value' => $form_state['values']['project'],
-  );
-  if (($count = count($projects)) <= 30) {
-    // Radio box widget for as much as 5 projects, select widget for 5-30 projects.
-    $form['project']['#type'] = ($count <= 5 ? 'radios' : 'select');
-    $form['project']['#options'] = array('' => t('All'));
-    foreach ($projects as $project) {
-      // title used to conform to the autocomplete behavior.
-      $form['project']['#options'][$project->title] = $project->title;
-    }
+  $count = count($projects);
+  if ($count == 1) {
+    // Only one project, store as form value.
+    $only_project = reset($projects);
+    $form['project'] = array(
+      '#type' => 'value',
+      '#value' => $only_project->title,
+    );
   }
   else {
-    // Autocomplete field for more then 30 projects.
-    $form['project'] += array(
-      '#type' => 'textfield',
-      '#autocomplete_path' => 'translate/project-autocomplete',
+    $form['project'] = array(
+      '#title' => $projects_title,
+      '#description' => t('Alternatively you can <a href="@explore">explore projects</a>.', array('@explore' => url('translate/projects'))),
+      '#default_value' => $form_state['values']['project'],
     );
+    if ($count <= 30) {
+      // Radio box widget for as much as 5 projects, select widget for 5-30 projects.
+      $form['project']['#type'] = ($count <= 5 ? 'radios' : 'select');
+      $form['project']['#options'] = array('' => t('All'));
+      foreach ($projects as $project) {
+        // title used to conform to the autocomplete behavior.
+        $form['project']['#options'][$project->title] = $project->title;
+      }
+    }
+    else {
+      // Autocomplete field for more then 30 projects.
+      $form['project'] += array(
+        '#type' => 'textfield',
+        '#autocomplete_path' => 'translate/project-autocomplete',
+      );
+    }
   }
 
   // Either we have languages or projects, so we can jump.
