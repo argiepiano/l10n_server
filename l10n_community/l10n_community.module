@@ -265,6 +265,15 @@ function l10n_community_menu() {
     'type' => MENU_CALLBACK,
   );
 
+  // End point to provide info about available languages.
+  $items['translate/available-languages'] = array(
+    'title' => 'Available languages',
+    'page callback' => 'l10n_community_get_languages',
+    'access arguments' => array('access content'),
+    'delivery callback' => 'backdrop_json_deliver',
+    'type' =>  MENU_CALLBACK,
+  );
+
   return $items;
 }
 
