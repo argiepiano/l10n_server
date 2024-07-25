@@ -794,7 +794,7 @@ function theme_l10n_community_page($variables) {
   foreach (array('top', 'left', 'right', 'bottom') as $container) {
     if (isset($page['#' . $container])) {
       $output .= '<div class="' . $container . ' clear-block">';
-      uasort($page['#' . $container], 'element_sort');
+      backdrop_sort($page['#' . $container], array('#weight'));
       foreach ($page['#' . $container] as $item) {
         $admin_block = theme('admin_block', array('block' => $item['#block']));
         if (isset($item['#classes'])) {
