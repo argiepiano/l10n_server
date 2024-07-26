@@ -1296,7 +1296,7 @@ function l10n_community_translation_details($tid = 0, $ajax = 0) {
     $GLOBALS['devel_shutdown'] = FALSE;
   }
   else {
-    $unpacked = l10n_community_unpack_string($string->translation);
+    $unpacked = !empty($string) ? l10n_community_unpack_string($string->translation) : array();
     $output .= '<h3>' . t('Translation') . '</h3>' . theme('item_list', array('items' => $unpacked)) . '<h3>' . t('History') . '</h3>';
   }
 
@@ -1314,7 +1314,7 @@ function l10n_community_translation_details($tid = 0, $ajax = 0) {
       $uid_submitted = $item->uid_action;
     }
   }
-  if (!empty($uid_submitted) && ($uid_submitted != $string->uid_entered)) {
+  if (!empty($string) && !empty($uid_submitted) && ($uid_submitted != $string->uid_entered)) {
     // Turns out the user used for attribution is different to the user used for
     // the string storage.
     // TODO Convert "user_load" to "user_load_multiple" if "$string->uid_entered" is other than a uid.
